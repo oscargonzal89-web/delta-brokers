@@ -1,0 +1,60 @@
+```text
+Diseña en Figma (Figma Make) la UI/UX de una plataforma web B2B para “Delta Brokers” que gestiona créditos hipotecarios/leasing para proyectos de vivienda nueva en Colombia.
+
+OBJETIVO
+- Multi-proyecto (salas de ventas): cargar bases Excel por proyecto y dar seguimiento por cliente.
+- Funnel por etapas macro: Preaprobación → Aprobación → Legalización → Desembolsado (etapa final).
+- Dashboard con KPIs por etapa/subestado + drill-down a listados filtrados.
+- Alertas de vencimiento: si crédito aprobado tiene días_restantes < 60 (vencido si <= 0). Vigencia siempre en DÍAS. fecha_vencimiento = fecha_carta_aprobación + vigencia_días.
+- Roles: Analista, Coordinador, Administrador.
+
+ESTILO
+B2B moderno, claro y operativo. Sidebar fijo + topbar + tablas densas. Badges de etapa/subestado y badge de vencimiento (OK/Por vencer/Vencido). Color principal neutro + acento; rojo/ámbar para riesgos. Desktop 1440px.
+
+NAVEGACIÓN (SIDEBAR)
+Dashboard / Proyectos / Importaciones (Excel) / Clientes / Vencimientos / Usuarios y Roles (Admin)
+
+PANTALLAS OBLIGATORIAS
+1) Login: email/password, estados error.
+2) Dashboard Global:
+   - Filtros: proyecto, ciudad, banco, analista.
+   - KPIs: total, #Preaprobación, #Aprobación, #Legalización, #Desembolsados, #Por vencer <60, #Vencidos.
+   - Tabla “Top por vencer” con días_restantes.
+3) Lista de Proyectos:
+   - Tabla: ciudad, proyecto, banco principal, total clientes, conteos por etapa, por vencer <60.
+   - CTA “Crear proyecto” (modal: ciudad/nombre/banco principal).
+4) Detalle de Proyecto (tabs):
+   - Seguimiento: KPIs por etapa + embudo simple + conteos por subestado (click = drill-down).
+   - Clientes: tabla filtrable.
+   - Vencimientos: rangos (<=0, 1–15, 16–30, 31–60, >60) + tabla.
+   - Importaciones: historial.
+5) Listado de Clientes (tabla densa + filtros sticky):
+   - Columnas: nombre, cédula, banco_actual, etapa, subestado, monto_inmueble, monto_financiar, ciudad_cliente, ciudad_inmueble, fecha_aprobación, vigencia_días, fecha_vencimiento, días_restantes, analistas (3).
+   - Filtros: búsqueda, etapa, subestado dependiente, banco, ciudad, analista, toggle “Solo <60”.
+   - Doble clic fila → abre Detalle de Cliente (drawer).
+6) Detalle de Cliente (drawer con tabs):
+   - Header: nombre+cédula + badges etapa/subestado + días_restantes + fecha_vencimiento.
+   - Acciones: Cambiar estado, Cambiar banco, Subir documento, Reasignar.
+   - Tabs:
+     - Resumen (Cliente/Inmueble/Financiero)
+     - Documentos: Carta preaprobación, Carta aprobación (upload + descargar)
+     - Historial: timeline (cambios estado, banco, asignación, importaciones)
+     - Asignaciones: analista_delta, analista_radicación, analista_legalización
+7) Vencimientos (global):
+   - KPIs por vencer/vencidos + tabla global (incluye proyecto) + filtros.
+8) Importaciones (Excel):
+   - Subir: selector proyecto + dropzone .xlsx + “Validar y cargar”.
+   - Historial: fecha, proyecto, archivo, usuario, insertados/actualizados/errores.
+   - Detalle importación: tabla de errores por fila + “Descargar reporte”.
+9) Usuarios y Roles (Admin): tabla usuarios, crear/editar, asignar rol.
+
+REGLAS CLAVE
+- Proyecto tiene 1 banco_financiador_principal; cada cliente puede tener banco_actual distinto.
+- Cambio de banco: actualizar banco_actual y registrar en Historial (de→a, usuario, fecha). No se pierden documentos.
+
+COMPONENTES (Design System)
+Sidebar item, KPI card, badges etapa/subestado, badge vencimiento, filter chips, tabla densa, drawer, modal, timeline, upload dropzone, toasts.
+
+DATOS MOCK
+2 proyectos: “Bosques de Suba” (Bogotá, Bancolombia) y “Parque del Río” (Medellín, Davivienda). 12 clientes por proyecto, con variedad de etapas; 3 por vencer (55/20/5 días) y 1 vencido (-3). 2 clientes con cambio de banco visible en historial.
+```
