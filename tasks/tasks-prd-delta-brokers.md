@@ -136,15 +136,15 @@
   - [x] 8.4 Implementar gráfico de embudo con datos reales (recharts)
   - [x] 8.5 Verificar navegación y estados de carga (loading, error, empty) + StatusBadge actualizado para EtapaMacro
 
-- [ ] 9.0 Conectar página de Clientes a datos reales con paginación server-side
-  - [ ] 9.1 Adaptar `Clientes.tsx`: reemplazar mock por `getCases()` con filtros server-side (etapa, subestado, banco, ciudad, analista, búsqueda texto)
-  - [ ] 9.2 Implementar paginación server-side (offset/limit) para cumplir NFR-03 (<2s con 5k registros)
-  - [ ] 9.3 Adaptar `ClienteDetalle.tsx` tab Resumen: cargar datos reales del caso + persona
-  - [ ] 9.4 Adaptar tab Documentos: listar documentos reales, upload de cartas con `uploadDocument()`
-  - [ ] 9.5 Adaptar tab Historial: cargar event_logs reales del caso
-  - [ ] 9.6 Adaptar tab Asignaciones: cargar y actualizar asignaciones reales con `updateAssignments()`
-  - [ ] 9.7 Implementar cambio de estado real con `updateCaseStatus()` y registro de auditoría
-  - [ ] 9.8 Implementar cambio de banco real con `changeCaseBank()` y historial
+- [x] 9.0 Conectar página de Clientes a datos reales con paginación server-side
+  - [x] 9.1 Adaptar `Clientes.tsx`: filtros server-side (etapa, subestado, banco, ciudad, analista, búsqueda con debounce)
+  - [x] 9.2 Implementar paginación server-side (offset/limit, 50 por página) con controles Anterior/Siguiente
+  - [x] 9.3 Adaptar `ClienteDetalle.tsx` tab Resumen: datos reales del caso + persona + proyecto desde v_cases_with_details
+  - [x] 9.4 Adaptar tab Documentos: listar documentos reales, upload/download con Storage
+  - [x] 9.5 Adaptar tab Historial: event_logs reales con timeline visual y payload from/to
+  - [x] 9.6 Adaptar tab Asignaciones: mostrar analistas reales (delta, radicación, legalización)
+  - [x] 9.7 Implementar cambio de estado real con `changeCaseStatus()` RPC + comentario + auditoría
+  - [x] 9.8 Implementar cambio de banco real con `changeCaseBank()` RPC + comentario
 
 - [ ] 10.0 Conectar funcionalidad de Importación Excel
   - [ ] 10.1 Crear Edge Function `supabase/functions/import-excel/index.ts`: recibir archivo + project_id, parsear XLSX

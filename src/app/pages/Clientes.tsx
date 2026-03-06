@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router';
 import { Input } from '../components/ui/input';
 import {
@@ -16,28 +16,57 @@ import {
   TableHeader,
   TableRow,
 } from '../components/ui/table';
-import { Switch } from '../components/ui/switch';
+import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
 import { StatusBadge } from '../components/StatusBadge';
 import { VencimientoBadge } from '../components/VencimientoBadge';
-import { Search } from 'lucide-react';
-import { clientes, proyectos, bancos, ciudades, subestadosPorEtapa, Etapa } from '../data/mock-data';
+import { Search, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { getCases, getSubestados, type CaseFilters } from '../../lib/api/cases';
+import { getAnalistas } from '../../lib/api/users';
 import { ClienteDetalle } from '../components/ClienteDetalle';
+import type { CaseWithDetails, EtapaMacro, CatalogoSubestado } from '../../lib/types';
+
+const BANCOS = [
+  'Bancolombia', 'Davivienda', 'Banco de Bogotá', 'BBVA Colombia',
+  'Banco Popular', 'Banco Occidente', 'Itaú',
+];
+const CIUDADES = ['Bogotá', 'Medellín', 'Cali', 'Barranquilla', 'Cartagena', 'Bucaramanga'];
+const ETAPAS: { value: EtapaMacro; label: string }[] = [
+  { value: 'preaprobacion', label: 'Preaprobación' },
+  { value: 'aprobacion', label: 'Aprobación' },
+  { value: 'legalizacion', label: 'Legalización' },
+  { value: 'desembolsado', label: 'Desembolsado' },
+];
+
+const PAGE_SIZE = 50;
 
 export function Clientes() {
   const [searchParams] = useSearchParams();
   const [busqueda, setBusqueda] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filtroEtapa, setFiltroEtapa] = useState<string>('todas');
   const [filtroSubestado, setFiltroSubestado] = useState<string>('todos');
   const [filtroBanco, setFiltroBanco] = useState<string>('todos');
   const [filtroCiudad, setFiltroCiudad] = useState<string>('todas');
   const [filtroAnalista, setFiltroAnalista] = useState<string>('todos');
-  const [soloMenor60, setSoloMenor60] = useState(false);
   const [clienteSeleccionado, setClienteSeleccionado] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+
+  const [cases, setCases] = useState<CaseWithDetails[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [analistas, setAnalistas] = useState<{ id: string; nombre: string }[]>([]);
+  const [subestadosList, setSubestadosList] = useState<CatalogoSubestado[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(busqueda), 400);
+    return () => clearTimeout(timer);
+  }, [busqueda]);
 
   useEffect(() => {
     const etapa = searchParams.get('etapa');
-    const proyecto = searchParams.get('proyecto');
     const ciudad = searchParams.get('ciudad');
     const banco = searchParams.get('banco');
     const analista = searchParams.get('analista');
@@ -47,56 +76,55 @@ export function Clientes() {
     if (ciudad) setFiltroCiudad(ciudad);
     if (banco) setFiltroBanco(banco);
     if (analista) setFiltroAnalista(analista);
-    if (destacar) {
-      setClienteSeleccionado(destacar);
-    }
+    if (destacar) setClienteSeleccionado(destacar);
   }, [searchParams]);
 
-  const analistas = useMemo(() => {
-    const analistasSet = new Set<string>();
-    clientes.forEach((c) => {
-      analistasSet.add(c.analistaDelta);
-    });
-    return Array.from(analistasSet);
+  useEffect(() => {
+    getAnalistas().then(setAnalistas).catch(() => {});
   }, []);
 
-  const subestadosDisponibles = useMemo(() => {
-    if (filtroEtapa === 'todas') return [];
-    return subestadosPorEtapa[filtroEtapa as Etapa] || [];
+  useEffect(() => {
+    if (filtroEtapa !== 'todas') {
+      getSubestados(filtroEtapa as EtapaMacro)
+        .then(setSubestadosList)
+        .catch(() => setSubestadosList([]));
+    } else {
+      setSubestadosList([]);
+    }
+    setFiltroSubestado('todos');
   }, [filtroEtapa]);
 
-  const clientesFiltrados = useMemo(() => {
-    return clientes.filter((cliente) => {
-      if (busqueda) {
-        const searchLower = busqueda.toLowerCase();
-        if (
-          !cliente.nombre.toLowerCase().includes(searchLower) &&
-          !cliente.cedula.includes(busqueda)
-        ) {
-          return false;
-        }
-      }
+  const fetchCases = useCallback(async () => {
+    try {
+      setLoading(true);
+      const filters: CaseFilters = { page, pageSize: PAGE_SIZE };
 
-      if (filtroEtapa !== 'todas' && cliente.etapa !== filtroEtapa) return false;
-      if (filtroSubestado !== 'todos' && cliente.subestado !== filtroSubestado) return false;
-      if (filtroBanco !== 'todos' && cliente.bancoActual !== filtroBanco) return false;
-      if (filtroCiudad !== 'todas' && cliente.ciudadInmueble !== filtroCiudad) return false;
-      if (filtroAnalista !== 'todos' && cliente.analistaDelta !== filtroAnalista) return false;
-      if (
-        soloMenor60 &&
-        (cliente.diasRestantes === undefined || cliente.diasRestantes >= 60)
-      ) {
-        return false;
-      }
+      if (filtroEtapa !== 'todas') filters.etapaMacro = filtroEtapa as EtapaMacro;
+      if (filtroSubestado !== 'todos') filters.subestado = filtroSubestado;
+      if (filtroBanco !== 'todos') filters.bancoActual = filtroBanco;
+      if (filtroCiudad !== 'todas') filters.ciudadInmueble = filtroCiudad;
+      if (filtroAnalista !== 'todos') filters.analistaId = filtroAnalista;
+      if (debouncedSearch) filters.search = debouncedSearch;
 
-      return true;
-    });
-  }, [busqueda, filtroEtapa, filtroSubestado, filtroBanco, filtroCiudad, filtroAnalista, soloMenor60]);
+      const result = await getCases(filters);
+      setCases(result.data);
+      setTotalCount(result.count);
+      setTotalPages(result.totalPages);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar clientes');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, filtroEtapa, filtroSubestado, filtroBanco, filtroCiudad, filtroAnalista, debouncedSearch]);
 
-  const handleFiltroEtapaChange = (value: string) => {
-    setFiltroEtapa(value);
-    setFiltroSubestado('todos');
-  };
+  useEffect(() => {
+    setPage(1);
+  }, [filtroEtapa, filtroSubestado, filtroBanco, filtroCiudad, filtroAnalista, debouncedSearch]);
+
+  useEffect(() => {
+    fetchCases();
+  }, [fetchCases]);
 
   return (
     <div className="flex flex-col h-full">
@@ -111,19 +139,18 @@ export function Clientes() {
           />
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <div>
             <Label className="text-xs text-gray-600">Etapa</Label>
-            <Select value={filtroEtapa} onValueChange={handleFiltroEtapaChange}>
+            <Select value={filtroEtapa} onValueChange={setFiltroEtapa}>
               <SelectTrigger className="mt-1">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todas">Todas</SelectItem>
-                <SelectItem value="Preaprobación">Preaprobación</SelectItem>
-                <SelectItem value="Aprobación">Aprobación</SelectItem>
-                <SelectItem value="Legalización">Legalización</SelectItem>
-                <SelectItem value="Desembolsado">Desembolsado</SelectItem>
+                {ETAPAS.map((e) => (
+                  <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -140,10 +167,8 @@ export function Clientes() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
-                {subestadosDisponibles.map((sub) => (
-                  <SelectItem key={sub} value={sub}>
-                    {sub}
-                  </SelectItem>
+                {subestadosList.map((sub) => (
+                  <SelectItem key={sub.id} value={sub.nombre}>{sub.nombre}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -157,10 +182,8 @@ export function Clientes() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
-                {bancos.map((b) => (
-                  <SelectItem key={b} value={b}>
-                    {b}
-                  </SelectItem>
+                {BANCOS.map((b) => (
+                  <SelectItem key={b} value={b}>{b}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -174,10 +197,8 @@ export function Clientes() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todas">Todas</SelectItem>
-                {ciudades.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
+                {CIUDADES.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -192,98 +213,112 @@ export function Clientes() {
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
                 {analistas.map((a) => (
-                  <SelectItem key={a} value={a}>
-                    {a}
-                  </SelectItem>
+                  <SelectItem key={a.id} value={a.id}>{a.nombre}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-
-          <div className="flex items-end">
-            <div className="flex items-center space-x-2 pb-2">
-              <Switch
-                id="menor60"
-                checked={soloMenor60}
-                onCheckedChange={setSoloMenor60}
-              />
-              <Label htmlFor="menor60" className="text-xs">
-                Solo &lt;60 días
-              </Label>
-            </div>
-          </div>
         </div>
 
-        <div className="text-sm text-gray-600">
-          Mostrando {clientesFiltrados.length} de {clientes.length} clientes
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-600">
+            Mostrando {cases.length} de {totalCount} clientes
+          </span>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm text-gray-600">
+                Página {page} de {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
       <div className="flex-1 overflow-auto p-4">
-        <div className="bg-white rounded-lg border border-gray-200">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[200px]">Nombre</TableHead>
-                <TableHead>Cédula</TableHead>
-                <TableHead>Banco</TableHead>
-                <TableHead>Etapa</TableHead>
-                <TableHead>Subestado</TableHead>
-                <TableHead className="text-right">Monto Inmueble</TableHead>
-                <TableHead className="text-right">Monto Financiar</TableHead>
-                <TableHead>Ciudad Cliente</TableHead>
-                <TableHead>Fecha Aprob.</TableHead>
-                <TableHead className="text-center">Vigencia</TableHead>
-                <TableHead>Fecha Venc.</TableHead>
-                <TableHead className="text-center">Días Rest.</TableHead>
-                <TableHead>Estado</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {clientesFiltrados.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+            <p className="font-medium">Error</p>
+            <p className="text-sm mt-1">{error}</p>
+            <Button variant="outline" className="mt-3" onClick={fetchCases}>Reintentar</Button>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg border border-gray-200">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={13} className="text-center text-gray-500 py-8">
-                    No se encontraron clientes con los filtros seleccionados
-                  </TableCell>
+                  <TableHead className="w-[200px]">Nombre</TableHead>
+                  <TableHead>Cédula</TableHead>
+                  <TableHead>Banco</TableHead>
+                  <TableHead>Etapa</TableHead>
+                  <TableHead>Subestado</TableHead>
+                  <TableHead className="text-right">Monto Inmueble</TableHead>
+                  <TableHead className="text-right">Monto Financiar</TableHead>
+                  <TableHead>Fecha Aprob.</TableHead>
+                  <TableHead className="text-center">Días Rest.</TableHead>
+                  <TableHead>Estado</TableHead>
                 </TableRow>
-              ) : (
-                clientesFiltrados.map((cliente) => (
-                  <TableRow
-                    key={cliente.id}
-                    className="cursor-pointer hover:bg-gray-50"
-                    onDoubleClick={() => setClienteSeleccionado(cliente.id)}
-                  >
-                    <TableCell className="font-medium">{cliente.nombre}</TableCell>
-                    <TableCell className="text-sm">{cliente.cedula}</TableCell>
-                    <TableCell className="text-sm">{cliente.bancoActual}</TableCell>
-                    <TableCell>
-                      <StatusBadge etapa={cliente.etapa} />
-                    </TableCell>
-                    <TableCell className="text-xs text-gray-600">{cliente.subestado}</TableCell>
-                    <TableCell className="text-right text-sm">
-                      ${(cliente.montoInmueble / 1000000).toFixed(0)}M
-                    </TableCell>
-                    <TableCell className="text-right text-sm">
-                      ${(cliente.montoFinanciar / 1000000).toFixed(0)}M
-                    </TableCell>
-                    <TableCell className="text-sm">{cliente.ciudadCliente}</TableCell>
-                    <TableCell className="text-sm">{cliente.fechaAprobacion || '-'}</TableCell>
-                    <TableCell className="text-center text-sm">
-                      {cliente.vigenciaDias ? `${cliente.vigenciaDias}d` : '-'}
-                    </TableCell>
-                    <TableCell className="text-sm">{cliente.fechaVencimiento || '-'}</TableCell>
-                    <TableCell className="text-center font-semibold text-sm">
-                      {cliente.diasRestantes !== undefined ? `${cliente.diasRestantes}d` : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <VencimientoBadge diasRestantes={cliente.diasRestantes} />
+              </TableHeader>
+              <TableBody>
+                {cases.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={10} className="text-center text-gray-500 py-8">
+                      No se encontraron clientes con los filtros seleccionados
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                ) : (
+                  cases.map((c) => (
+                    <TableRow
+                      key={c.case_id}
+                      className="cursor-pointer hover:bg-gray-50"
+                      onDoubleClick={() => setClienteSeleccionado(c.case_id!)}
+                    >
+                      <TableCell className="font-medium">{c.nombre_completo}</TableCell>
+                      <TableCell className="text-sm">{c.cedula}</TableCell>
+                      <TableCell className="text-sm">{c.banco_actual}</TableCell>
+                      <TableCell>
+                        <StatusBadge etapa={c.etapa_macro ?? 'preaprobacion'} />
+                      </TableCell>
+                      <TableCell className="text-xs text-gray-600">{c.subestado}</TableCell>
+                      <TableCell className="text-right text-sm">
+                        {c.monto_inmueble ? `$${(c.monto_inmueble / 1000000).toFixed(0)}M` : '-'}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {c.monto_a_financiar ? `$${(c.monto_a_financiar / 1000000).toFixed(0)}M` : '-'}
+                      </TableCell>
+                      <TableCell className="text-sm">{c.fecha_carta_aprobacion || '-'}</TableCell>
+                      <TableCell className="text-center font-semibold text-sm">
+                        {c.dias_restantes != null ? `${c.dias_restantes}d` : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <VencimientoBadge diasRestantes={c.dias_restantes ?? undefined} />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
 
       {clienteSeleccionado && (
@@ -291,6 +326,7 @@ export function Clientes() {
           clienteId={clienteSeleccionado}
           open={!!clienteSeleccionado}
           onClose={() => setClienteSeleccionado(null)}
+          onUpdate={fetchCases}
         />
       )}
     </div>
