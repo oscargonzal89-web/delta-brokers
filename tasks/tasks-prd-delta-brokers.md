@@ -129,12 +129,12 @@
   - [x] 7.6 Crear `src/lib/api/users.ts`: getUsers(), getAnalistas(), getUserById(), updateUserRole(), toggleUserActive(), updateUserProfile()
   - [x] 7.7 Crear `src/lib/api/analytics.ts`: getDashboardKpis(), getVencimientosPorRango(), getSeguimientoAnalistas(), getTopPorVencer(), getVencimientosCriticos()
 
-- [ ] 8.0 Conectar página de Proyectos a datos reales
-  - [ ] 8.1 Adaptar `Proyectos.tsx`: reemplazar import de mock por llamadas a `getProjects()` y `getProjectKpis()`
-  - [ ] 8.2 Implementar creación real de proyecto con `createProject()` en el dialog
-  - [ ] 8.3 Adaptar `ProyectoDetalle.tsx`: cargar proyecto, clientes, importaciones y KPIs desde Supabase
-  - [ ] 8.4 Implementar gráfico de embudo con datos reales (recharts)
-  - [ ] 8.5 Verificar navegación y estados de carga (loading, error, empty)
+- [x] 8.0 Conectar página de Proyectos a datos reales
+  - [x] 8.1 Adaptar `Proyectos.tsx`: reemplazar import de mock por llamadas a `getProjects()` y `getProjectKpis()`
+  - [x] 8.2 Implementar creación real de proyecto con `createProject()` en el dialog
+  - [x] 8.3 Adaptar `ProyectoDetalle.tsx`: cargar proyecto, clientes, importaciones y KPIs desde Supabase
+  - [x] 8.4 Implementar gráfico de embudo con datos reales (recharts)
+  - [x] 8.5 Verificar navegación y estados de carga (loading, error, empty) + StatusBadge actualizado para EtapaMacro
 
 - [ ] 9.0 Conectar página de Clientes a datos reales con paginación server-side
   - [ ] 9.1 Adaptar `Clientes.tsx`: reemplazar mock por `getCases()` con filtros server-side (etapa, subestado, banco, ciudad, analista, búsqueda texto)
