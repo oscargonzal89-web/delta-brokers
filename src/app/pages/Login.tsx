@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -6,13 +6,21 @@ import { Label } from '../components/ui/label';
 import { Card } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { useAuth } from '../../lib/auth';
 
 export function Login() {
   const navigate = useNavigate();
+  const { signIn, user, loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,15 +38,23 @@ export function Login() {
 
     setLoading(true);
 
-    setTimeout(() => {
-      if (email === 'admin@deltabrokers.co' && password === 'admin123') {
-        navigate('/dashboard');
-      } else {
-        setError('Credenciales incorrectas');
-        setLoading(false);
-      }
-    }, 1000);
+    const { error: authError } = await signIn(email, password);
+
+    if (authError) {
+      setError(authError === 'Invalid login credentials'
+        ? 'Credenciales incorrectas'
+        : authError);
+      setLoading(false);
+    }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
+        <div className="text-white">Cargando...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-4">
@@ -84,12 +100,6 @@ export function Login() {
             {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
           </Button>
         </form>
-
-        <div className="mt-6 text-center">
-          <p className="text-xs text-gray-500">
-            Demo: admin@deltabrokers.co / admin123
-          </p>
-        </div>
       </Card>
     </div>
   );

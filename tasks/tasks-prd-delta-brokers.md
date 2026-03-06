@@ -56,14 +56,14 @@
 
 ## Tasks
 
-- [ ] 0.0 Inicializar repositorio Git y configuración del proyecto
-  - [ ] 0.1 Crear `.gitignore` (node_modules, dist, .env, .DS_Store, etc.)
-  - [ ] 0.2 Inicializar repo Git en `/repos/DeltaBrokers`
-  - [ ] 0.3 Commit inicial con todo el código actual (frontend Figma + migraciones Supabase + task list)
-  - [ ] 0.4 Crear repositorio remoto en GitHub y push inicial
+- [x] 0.0 Inicializar repositorio Git y configuración del proyecto
+  - [x] 0.1 Crear `.gitignore` (node_modules, dist, .env, .DS_Store, etc.)
+  - [x] 0.2 Inicializar repo Git en `/repos/DeltaBrokers`
+  - [x] 0.3 Commit inicial con todo el código actual (frontend Figma + migraciones Supabase + task list)
+  - [x] 0.4 Crear repositorio remoto en GitHub y push inicial — https://github.com/oscargonzal89-web/delta-brokers
 
 - [x] 1.0 Configurar proyecto Supabase y estructura de base de datos
-  - [ ] 1.1 Inicializar Supabase en el proyecto local (`supabase init`) y configurar enlace al proyecto remoto (`hwjiasyyqfpalsufjuai`) — **PENDIENTE: conectar MCP Supabase o ejecutar via CLI/Dashboard**
+  - [x] 1.1 Inicializar Supabase en el proyecto remoto (`hwjiasyyqfpalsufjuai`) — Configurado via MCP, 6 migraciones aplicadas
   - [x] 1.2 Crear migración `001_initial_schema.sql`: definir tipos ENUM para etapa_macro (`preaprobacion`, `aprobacion`, `legalizacion`, `desembolsado`), subestado, tipo_documento, tipo_evento, rol_usuario
   - [x] 1.3 Crear tabla `projects` (id UUID PK, ciudad, nombre, banco_financiador_principal, created_at, updated_at)
   - [x] 1.4 Crear tabla `persons` (id UUID PK, cedula UNIQUE NOT NULL, nombres, apellidos, fecha_nacimiento, ciudad_cliente, created_at)
@@ -111,14 +111,14 @@
   - [x] 5.5 Crear migración `005_seed_data.sql`: catálogo de subestados por etapa según PRD §6.2 (14 subestados)
   - [ ] 5.6 Crear usuario admin inicial (admin@deltabrokers.co) — **PENDIENTE: ejecutar en Supabase Auth**
 
-- [ ] 6.0 Integrar Supabase Auth en el frontend (Login + protección de rutas)
-  - [ ] 6.1 Instalar dependencia `@supabase/supabase-js` y crear `src/lib/supabase.ts` con URL y anon key del proyecto
-  - [ ] 6.2 Crear `src/lib/auth.tsx`: AuthProvider con context (user, profile, role, loading, signIn, signOut)
-  - [ ] 6.3 Crear hook `useAuth()` para acceso al contexto desde cualquier componente
-  - [ ] 6.4 Crear componente `ProtectedRoute` que redirige a /login si no hay sesión
-  - [ ] 6.5 Adaptar `Login.tsx`: reemplazar autenticación mock por `supabase.auth.signInWithPassword()`
-  - [ ] 6.6 Adaptar `AppLayout.tsx`: mostrar nombre y rol real del usuario, logout real, ocultar items de sidebar según rol
-  - [ ] 6.7 Envolver `routes.tsx` con AuthProvider y proteger rutas con ProtectedRoute
+- [x] 6.0 Integrar Supabase Auth en el frontend (Login + protección de rutas)
+  - [x] 6.1 Instalar dependencia `@supabase/supabase-js` y crear `src/lib/supabase.ts` con URL y anon key del proyecto
+  - [x] 6.2 Crear `src/lib/auth.tsx`: AuthProvider con context (user, profile, role, loading, signIn, signOut)
+  - [x] 6.3 Crear hook `useAuth()` para acceso al contexto desde cualquier componente
+  - [x] 6.4 Crear componente `ProtectedRoute` que redirige a /login si no hay sesión
+  - [x] 6.5 Adaptar `Login.tsx`: reemplazar autenticación mock por `supabase.auth.signInWithPassword()`
+  - [x] 6.6 Adaptar `AppLayout.tsx`: mostrar nombre y rol real del usuario, logout real, ocultar items de sidebar según rol
+  - [x] 6.7 Envolver `routes.tsx` con AuthProvider y proteger rutas con ProtectedRoute
 
 - [ ] 7.0 Crear capa de API del frontend (lib/api)
   - [ ] 7.1 Crear `src/lib/types.ts` con tipos TypeScript que reflejen el schema de Supabase (Project, Person, Case, Assignment, Document, Import, EventLog, UserProfile)

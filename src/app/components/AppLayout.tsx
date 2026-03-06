@@ -20,24 +20,48 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
+import { useAuth } from '../../lib/auth';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Proyectos', href: '/proyectos', icon: FolderKanban },
-  { name: 'Importaciones', href: '/importaciones', icon: Upload },
+  { name: 'Importaciones', href: '/importaciones', icon: Upload, coordinatorOnly: true },
   { name: 'Clientes', href: '/clientes', icon: Users },
   { name: 'Vencimientos', href: '/vencimientos', icon: AlertCircle },
   { name: 'Seguimiento Analistas', href: '/seguimiento-analistas', icon: ClipboardList },
   { name: 'Usuarios y Roles', href: '/usuarios', icon: Settings, adminOnly: true },
 ];
 
+const rolLabels: Record<string, string> = {
+  admin: 'Administrador',
+  coordinador: 'Coordinador',
+  analista: 'Analista',
+};
+
 export function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { profile, signOut, isAdmin, isCoordinatorOrAdmin } = useAuth();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOut();
     navigate('/login');
   };
+
+  const initials = profile?.nombre
+    ? profile.nombre
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    : '??';
+
+  const visibleNavigation = navigation.filter((item) => {
+    if (item.adminOnly) return isAdmin;
+    if (item.coordinatorOnly) return isCoordinatorOrAdmin;
+    return true;
+  });
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -51,7 +75,7 @@ export function AppLayout() {
         <Separator />
 
         <nav className="flex-1 p-4 space-y-1">
-          {navigation.map((item) => {
+          {visibleNavigation.map((item) => {
             const isActive = location.pathname.startsWith(item.href);
             return (
               <Link
@@ -77,11 +101,15 @@ export function AppLayout() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="w-full justify-start gap-3 px-3">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-gray-200 text-gray-700 text-xs">AD</AvatarFallback>
+                  <AvatarFallback className="bg-gray-200 text-gray-700 text-xs">
+                    {initials}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 text-left">
-                  <p className="text-sm font-medium">Admin Principal</p>
-                  <p className="text-xs text-gray-500">Administrador</p>
+                  <p className="text-sm font-medium">{profile?.nombre ?? 'Cargando...'}</p>
+                  <p className="text-xs text-gray-500">
+                    {profile?.rol ? rolLabels[profile.rol] ?? profile.rol : ''}
+                  </p>
                 </div>
               </Button>
             </DropdownMenuTrigger>
@@ -114,11 +142,11 @@ export function AppLayout() {
               </h2>
             </div>
             <div className="text-sm text-gray-500">
-              Hoy: {new Date().toLocaleDateString('es-CO', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
+              Hoy: {new Date().toLocaleDateString('es-CO', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
               })}
             </div>
           </div>
