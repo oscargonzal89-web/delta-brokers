@@ -33,7 +33,7 @@ const navigation = [
 ];
 
 const rolLabels: Record<string, string> = {
-  admin: 'Administrador',
+  administrador: 'Administrador',
   coordinador: 'Coordinador',
   analista: 'Analista',
 };

@@ -8,7 +8,7 @@ import {
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 
-export type UserRole = 'admin' | 'coordinador' | 'analista';
+export type UserRole = 'administrador' | 'coordinador' | 'analista';
 
 export interface UserProfile {
   id: string;
@@ -95,9 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
   };
 
-  const isAdmin = profile?.rol === 'admin';
+  const isAdmin = profile?.rol === 'administrador';
   const isCoordinatorOrAdmin =
-    profile?.rol === 'admin' || profile?.rol === 'coordinador';
+    profile?.rol === 'administrador' || profile?.rol === 'coordinador';
 
   return (
     <AuthContext.Provider

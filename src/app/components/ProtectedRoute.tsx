@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  requiredRole?: 'admin' | 'coordinador';
+  requiredRole?: 'administrador' | 'coordinador';
 }
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
@@ -25,13 +25,13 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     return <Navigate to="/login" replace />;
   }
 
-  if (requiredRole === 'admin' && profile?.rol !== 'admin') {
+  if (requiredRole === 'administrador' && profile?.rol !== 'administrador') {
     return <Navigate to="/dashboard" replace />;
   }
 
   if (
     requiredRole === 'coordinador' &&
-    profile?.rol !== 'admin' &&
+    profile?.rol !== 'administrador' &&
     profile?.rol !== 'coordinador'
   ) {
     return <Navigate to="/dashboard" replace />;
