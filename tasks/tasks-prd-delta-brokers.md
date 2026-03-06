@@ -120,14 +120,14 @@
   - [x] 6.6 Adaptar `AppLayout.tsx`: mostrar nombre y rol real del usuario, logout real, ocultar items de sidebar según rol
   - [x] 6.7 Envolver `routes.tsx` con AuthProvider y proteger rutas con ProtectedRoute
 
-- [ ] 7.0 Crear capa de API del frontend (lib/api)
-  - [ ] 7.1 Crear `src/lib/types.ts` con tipos TypeScript que reflejen el schema de Supabase (Project, Person, Case, Assignment, Document, Import, EventLog, UserProfile)
-  - [ ] 7.2 Crear `src/lib/api/projects.ts`: getProjects(), getProjectById(), createProject(), getProjectKpis(), getProjectClients()
-  - [ ] 7.3 Crear `src/lib/api/cases.ts`: getCases() con filtros y paginación, getCaseById(), updateCaseStatus(), changeCaseBank(), updateAssignments()
-  - [ ] 7.4 Crear `src/lib/api/imports.ts`: uploadExcel(), getImports(), getImportErrors(), getImportById()
-  - [ ] 7.5 Crear `src/lib/api/documents.ts`: uploadDocument(), downloadDocument(), getDocumentsByCaseId()
-  - [ ] 7.6 Crear `src/lib/api/users.ts`: getUsers(), createUser(), updateUser(), toggleUserActive()
-  - [ ] 7.7 Crear `src/lib/api/analytics.ts`: getDashboardKpis(), getVencimientosPorRango(), getSeguimientoAnalistas(), getTopPorVencer()
+- [x] 7.0 Crear capa de API del frontend (lib/api)
+  - [x] 7.1 Crear `src/lib/types.ts` con tipos TypeScript generados desde Supabase (Project, Person, Case, Assignment, Document, Import, EventLog, UserProfile + Views + Enums)
+  - [x] 7.2 Crear `src/lib/api/projects.ts`: getProjects(), getProjectById(), createProject(), updateProject(), getProjectKpis(), getSubestadosPorProyecto()
+  - [x] 7.3 Crear `src/lib/api/cases.ts`: getCases() con filtros y paginación server-side, getCaseById(), changeCaseStatus(), changeCaseBank(), updateAssignment(), getCaseEventLogs(), getSubestados()
+  - [x] 7.4 Crear `src/lib/api/imports.ts`: uploadExcel() via Edge Function, getImports(), getImportById(), getImportErrors()
+  - [x] 7.5 Crear `src/lib/api/documents.ts`: uploadDocument() con Storage + metadata, downloadDocument() con signed URL, deleteDocument(), getDocumentsByCase()
+  - [x] 7.6 Crear `src/lib/api/users.ts`: getUsers(), getAnalistas(), getUserById(), updateUserRole(), toggleUserActive(), updateUserProfile()
+  - [x] 7.7 Crear `src/lib/api/analytics.ts`: getDashboardKpis(), getVencimientosPorRango(), getSeguimientoAnalistas(), getTopPorVencer(), getVencimientosCriticos()
 
 - [ ] 8.0 Conectar página de Proyectos a datos reales
   - [ ] 8.1 Adaptar `Proyectos.tsx`: reemplazar import de mock por llamadas a `getProjects()` y `getProjectKpis()`
