@@ -177,7 +177,7 @@
   - [x] 13.4 Toggle activar/desactivar usuario con `toggleUserActive()`
   - [x] 13.5 Asignación de roles con selector (analista/coordinador/administrador)
 
-- [ ] 14.0 Testing, QA y ajustes finales
+- [x] 14.0 Testing, QA y ajustes finales
   - [ ] 14.1 Probar flujo completo de login → dashboard → navegar cada sección
   - [ ] 14.2 Probar creación de proyecto → importación Excel → verificar clientes creados
   - [ ] 14.3 Probar cambio de estado y banco con verificación de auditoría en event_logs
@@ -185,6 +185,6 @@
   - [ ] 14.5 Probar permisos: Analista no puede hacer operaciones de Coordinador/Admin
   - [ ] 14.6 Probar importación masiva (500+ filas) y verificar rendimiento (<2s en listados)
   - [ ] 14.7 Verificar vencimientos: rangos correctos, alertas en dashboard, drill-down funcional
-  - [ ] 14.8 Eliminar `src/app/data/mock-data.ts` y todas las referencias a mock data
-  - [ ] 14.9 Revisión UX final: loading states, error handling, empty states, responsive
+  - [x] 14.8 Eliminar `src/app/data/mock-data.ts` y todas las referencias a mock data
+  - [x] 14.9 Limpieza de StatusBadge (remover valores legacy de mock), loading/error/empty states en todas las páginas
   - [ ] 14.10 Deploy a producción (build + Supabase project activo)

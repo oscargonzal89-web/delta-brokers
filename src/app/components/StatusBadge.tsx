@@ -11,10 +11,6 @@ const etapaLabels: Record<string, string> = {
   aprobacion: 'Aprobación',
   legalizacion: 'Legalización',
   desembolsado: 'Desembolsado',
-  Preaprobación: 'Preaprobación',
-  Aprobación: 'Aprobación',
-  Legalización: 'Legalización',
-  Desembolsado: 'Desembolsado',
 };
 
 const etapaColors: Record<string, string> = {
@@ -22,10 +18,6 @@ const etapaColors: Record<string, string> = {
   aprobacion: 'bg-purple-100 text-purple-800 hover:bg-purple-100',
   legalizacion: 'bg-amber-100 text-amber-800 hover:bg-amber-100',
   desembolsado: 'bg-green-100 text-green-800 hover:bg-green-100',
-  Preaprobación: 'bg-blue-100 text-blue-800 hover:bg-blue-100',
-  Aprobación: 'bg-purple-100 text-purple-800 hover:bg-purple-100',
-  Legalización: 'bg-amber-100 text-amber-800 hover:bg-amber-100',
-  Desembolsado: 'bg-green-100 text-green-800 hover:bg-green-100',
 };
 
 export function StatusBadge({ etapa, subestado }: StatusBadgeProps) {
