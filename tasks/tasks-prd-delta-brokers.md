@@ -146,15 +146,15 @@
   - [x] 9.7 Implementar cambio de estado real con `changeCaseStatus()` RPC + comentario + auditoría
   - [x] 9.8 Implementar cambio de banco real con `changeCaseBank()` RPC + comentario
 
-- [ ] 10.0 Conectar funcionalidad de Importación Excel
-  - [ ] 10.1 Crear Edge Function `supabase/functions/import-excel/index.ts`: recibir archivo + project_id, parsear XLSX
-  - [ ] 10.2 Implementar validación por fila: campos requeridos (nombre, cedula, banco_actual, etapa, subestado), tipos, formatos
-  - [ ] 10.3 Implementar deduplicación por (project_id + cedula): si existe → update campos no críticos, si no → insert Person + Case
-  - [ ] 10.4 Registrar import en tabla `imports` con contadores (inserted_count, updated_count, error_count)
-  - [ ] 10.5 Registrar errores por fila en `import_row_errors` sin detener la carga
-  - [ ] 10.6 Adaptar `Importaciones.tsx`: upload real llamando a la Edge Function, mostrar progreso
-  - [ ] 10.7 Implementar historial de importaciones desde tabla `imports`
-  - [ ] 10.8 Implementar detalle de errores desde tabla `import_row_errors`
+- [x] 10.0 Conectar funcionalidad de Importación Excel
+  - [x] 10.1 Crear y desplegar Edge Function `import-excel` en Supabase (Deno + npm:xlsx)
+  - [x] 10.2 Validación por fila: campos requeridos (nombre, cedula, banco_actual, etapa, subestado), normalización de etapas
+  - [x] 10.3 Deduplicación por (project_id + cedula): upsert persona, check case existente → update o insert
+  - [x] 10.4 Registro en tabla `imports` con contadores (inserted_count, updated_count, error_count) y status
+  - [x] 10.5 Registro de errores por fila en `import_row_errors` sin detener la carga
+  - [x] 10.6 Adaptar `Importaciones.tsx`: upload real via Edge Function, loading state, selector de proyectos reales
+  - [x] 10.7 Historial de importaciones desde tabla `imports` con join a projects
+  - [x] 10.8 Detalle de errores desde tabla `import_row_errors` en dialog
 
 - [ ] 11.0 Conectar página de Documentos (upload/download de cartas)
   - [ ] 11.1 Adaptar upload en `ClienteDetalle.tsx`: subir archivo a Supabase Storage bucket `documents/{case_id}/{tipo}/`
