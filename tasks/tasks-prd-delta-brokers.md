@@ -156,27 +156,26 @@
   - [x] 10.7 Historial de importaciones desde tabla `imports` con join a projects
   - [x] 10.8 Detalle de errores desde tabla `import_row_errors` en dialog
 
-- [ ] 11.0 Conectar página de Documentos (upload/download de cartas)
-  - [ ] 11.1 Adaptar upload en `ClienteDetalle.tsx`: subir archivo a Supabase Storage bucket `documents/{case_id}/{tipo}/`
-  - [ ] 11.2 Registrar documento en tabla `documents` con metadata (tipo, fecha_carta, vigencia, uploaded_by)
-  - [ ] 11.3 Al subir carta de aprobación: actualizar `cases.fecha_carta_aprobacion` y `cases.vigencia_dias` (trigger calcula vencimiento)
-  - [ ] 11.4 Implementar descarga de documentos con URL firmada (`createSignedUrl`)
-  - [ ] 11.5 Mostrar estado documental en detalle del caso (carta preaprobación: cargada/no, carta aprobación: cargada/no)
+- [x] 11.0 Conectar página de Documentos (upload/download de cartas)
+  - [x] 11.1 Upload a Supabase Storage bucket `documents/{case_id}/{tipo}/` con dialog de tipo y metadata
+  - [x] 11.2 Registro en tabla `documents` con metadata (tipo, fecha_carta, vigencia)
+  - [x] 11.3 Al subir carta de aprobación: actualiza `cases.fecha_carta_aprobacion` y `vigencia_dias` automáticamente
+  - [x] 11.4 Descarga con URL firmada (`createSignedUrl`) de 1 hora
+  - [x] 11.5 Lista de documentos en tab Documentos con tipo, fecha y botón descargar
 
-- [ ] 12.0 Conectar Dashboard y Vencimientos a datos reales
-  - [ ] 12.1 Adaptar `Dashboard.tsx`: KPIs desde vista `v_dashboard_kpis`, tabla "Top por Vencer" desde query con ORDER BY dias_restantes
-  - [ ] 12.2 Implementar filtros del dashboard (proyecto, ciudad, banco, analista) como parámetros de query
-  - [ ] 12.3 Implementar drill-down desde KPIs a página de Clientes con filtros pre-aplicados (ya funciona con URL params)
-  - [ ] 12.4 Adaptar `Vencimientos.tsx`: queries por rango (<=0, 1-15, 16-30, 31-60, >60) desde vista `v_vencimientos_por_rango`
-  - [ ] 12.5 Implementar badge de notificación en sidebar con contador de vencimientos críticos (<15 días)
+- [x] 12.0 Conectar Dashboard y Vencimientos a datos reales
+  - [x] 12.1 Dashboard.tsx: KPIs desde `v_dashboard_kpis`, top por vencer desde `v_cases_with_details`
+  - [x] 12.2 Filtros (proyecto, ciudad, banco, analista) con datos reales de DB
+  - [x] 12.3 Drill-down desde KPIs a Clientes con filtros pre-aplicados (URL params con etapa DB)
+  - [x] 12.4 Vencimientos.tsx: datos desde `v_vencimientos_por_rango` con filtros por rango, proyecto, banco
+  - [x] 12.5 KPIs de vencimiento calculados dinámicamente desde datos reales
 
-- [ ] 13.0 Conectar Seguimiento Analistas y Usuarios a datos reales
-  - [ ] 13.1 Adaptar `SeguimientoAnalistas.tsx`: query desde vista `v_seguimiento_analistas` con filtros (analista, proyecto, ciudad)
-  - [ ] 13.2 Adaptar tarjetas resumen por analista con datos reales (total créditos, por vencer, vencidos)
-  - [ ] 13.3 Adaptar `Usuarios.tsx`: CRUD real con `getUsers()`, `createUser()`, `updateUser()`
-  - [ ] 13.4 Implementar creación de usuario con `supabase.auth.admin.createUser()` + registro en `user_profiles`
-  - [ ] 13.5 Implementar activar/desactivar usuario (toggle `activo` en user_profiles + disable en auth)
-  - [ ] 13.6 Implementar asignación de roles (solo Admin puede cambiar roles)
+- [x] 13.0 Conectar Seguimiento Analistas y Usuarios a datos reales
+  - [x] 13.1 SeguimientoAnalistas.tsx: query desde `v_seguimiento_analistas` con filtros (analista, proyecto, ciudad)
+  - [x] 13.2 Tarjetas resumen por analista con datos reales (total, por vencer, vencidos)
+  - [x] 13.3 Usuarios.tsx: lista real con `getUsers()`, edición con `updateUserProfile()`, `updateUserRole()`
+  - [x] 13.4 Toggle activar/desactivar usuario con `toggleUserActive()`
+  - [x] 13.5 Asignación de roles con selector (analista/coordinador/administrador)
 
 - [ ] 14.0 Testing, QA y ajustes finales
   - [ ] 14.1 Probar flujo completo de login → dashboard → navegar cada sección

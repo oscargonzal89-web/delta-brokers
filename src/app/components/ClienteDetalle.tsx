@@ -27,6 +27,7 @@ import {
   DialogTrigger,
 } from './ui/dialog';
 import { Label } from './ui/label';
+import { Input } from './ui/input';
 import { Calendar, Upload, FileText, History, Users, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getCaseById, changeCaseStatus, changeCaseBank, getCaseEventLogs, getSubestados } from '../../lib/api/cases';
@@ -67,6 +68,10 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
   const [comentario, setComentario] = useState('');
   const [subestadosList, setSubestadosList] = useState<CatalogoSubestado[]>([]);
   const [saving, setSaving] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadTipo, setUploadTipo] = useState<'carta_preaprobacion' | 'carta_aprobacion'>('carta_aprobacion');
+  const [fechaCarta, setFechaCarta] = useState('');
+  const [vigenciaDias, setVigenciaDias] = useState('90');
 
   const fetchData = async () => {
     try {
@@ -149,19 +154,29 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
     }
   };
 
-  const handleUpload = async (tipo: 'carta_preaprobacion' | 'carta_aprobacion') => {
+  const handleUploadFile = async () => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.pdf,.jpg,.jpeg,.png,.webp';
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
+      setSaving(true);
       try {
-        await uploadDocument(clienteId, file, tipo);
+        const metadata = uploadTipo === 'carta_aprobacion' && fechaCarta
+          ? { fecha_carta: fechaCarta, vigencia_dias: parseInt(vigenciaDias) || 90 }
+          : undefined;
+        await uploadDocument(clienteId, file, uploadTipo, metadata);
         toast.success('Documento cargado exitosamente');
+        setUploadOpen(false);
+        setFechaCarta('');
+        setVigenciaDias('90');
         fetchData();
+        onUpdate?.();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Error al cargar documento');
+      } finally {
+        setSaving(false);
       }
     };
     input.click();
@@ -296,10 +311,53 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
                   </DialogContent>
                 </Dialog>
 
-                <Button variant="outline" size="sm" onClick={() => handleUpload('carta_aprobacion')}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Subir Documento
-                </Button>
+                <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Upload className="h-4 w-4 mr-2" />
+                      Subir Documento
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Subir Documento</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Tipo de Documento</Label>
+                        <Select value={uploadTipo} onValueChange={(v: any) => setUploadTipo(v)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="carta_preaprobacion">Carta de Preaprobación</SelectItem>
+                            <SelectItem value="carta_aprobacion">Carta de Aprobación</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {uploadTipo === 'carta_aprobacion' && (
+                        <>
+                          <div className="space-y-2">
+                            <Label>Fecha de Aprobación</Label>
+                            <Input type="date" value={fechaCarta} onChange={(e) => setFechaCarta(e.target.value)} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Vigencia (días)</Label>
+                            <Input type="number" value={vigenciaDias} onChange={(e) => setVigenciaDias(e.target.value)} min="1" max="365" />
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            Al subir la carta de aprobación se actualizará automáticamente la fecha y vigencia del caso.
+                          </p>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setUploadOpen(false)} disabled={saving}>Cancelar</Button>
+                      <Button onClick={handleUploadFile} disabled={saving}>
+                        {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                        Seleccionar Archivo
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
 
               <Separator />
@@ -395,7 +453,7 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
                     <div className="text-center py-8 text-gray-500">
                       <FileText className="h-8 w-8 mx-auto mb-2 text-gray-300" />
                       <p>No hay documentos cargados</p>
-                      <Button variant="outline" size="sm" className="mt-3" onClick={() => handleUpload('carta_aprobacion')}>
+                      <Button variant="outline" size="sm" className="mt-3" onClick={() => setUploadOpen(true)}>
                         <Upload className="h-4 w-4 mr-2" />
                         Subir primer documento
                       </Button>
