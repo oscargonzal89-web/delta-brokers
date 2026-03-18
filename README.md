@@ -9,40 +9,36 @@ npm install
 npm run dev
 ```
 
-## Deployment to S3
+## Deployment (S3 + CloudFront)
 
-The project includes a GitHub Actions workflow that automatically deploys to AWS S3 on every push to the `main` branch.
+The project includes a GitHub Actions workflow that deploys to S3 and invalidates CloudFront cache on every push to `master`.
+
+### Architecture
+
+```
+GitHub Push → Build → S3 Upload → CloudFront Invalidation
+                                    ↓
+                              Custom Domain (optional)
+```
 
 ### Prerequisites
 
-1. **S3 Bucket** configured for static website hosting:
-   - Enable "Static website hosting"
-   - Index document: `index.html`
-   - Error document: `index.html` (required for SPA client-side routing)
+1. **S3 Bucket** (origin for CloudFront)
+2. **CloudFront distribution** with S3 origin
+3. **IAM user** with S3 + CloudFront permissions
+4. **Custom domain** (optional): Route 53 or external DNS + ACM certificate
 
-2. **IAM user** with S3 permissions:
-   - `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject`, `s3:ListBucket`
+### AWS Setup Guide
+
+- **[docs/AWS-CREAR-CLOUDFRONT.md](docs/AWS-CREAR-CLOUDFRONT.md)** — Create CloudFront distribution (step-by-step)
+- **[docs/AWS-CLOUDFRONT-SETUP.md](docs/AWS-CLOUDFRONT-SETUP.md)** — Full setup (S3 permissions, IAM, custom domain)
 
 ### GitHub Configuration
 
-Configure the following in your repository (Settings → Secrets and variables → Actions):
+**Secrets:** `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
 
-**Secrets:**
-
-| Secret | Description |
-|--------|-------------|
-| `AWS_ACCESS_KEY_ID` | AWS access key |
-| `AWS_SECRET_ACCESS_KEY` | AWS secret key |
-| `VITE_SUPABASE_URL` | Supabase project URL (for build) |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key (for build) |
-
-**Variables:**
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `S3_BUCKET_NAME` | Target S3 bucket name | Required |
-| `AWS_REGION` | AWS region | `us-east-1` |
+**Variables:** `S3_BUCKET_NAME`, `AWS_REGION`, `CLOUDFRONT_DISTRIBUTION_ID`
 
 ### Manual Deployment
 
-Go to Actions → Deploy to S3 → Run workflow.
+Actions → Deploy to S3 → Run workflow.
