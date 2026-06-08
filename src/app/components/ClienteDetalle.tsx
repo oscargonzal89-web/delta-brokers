@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from './ui/sheet';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -19,33 +19,41 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from './ui/dialog';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
-import { Calendar, Upload, FileText, History, Users, Loader2 } from 'lucide-react';
+import {
+  Calendar,
+  Upload,
+  FileText,
+  History,
+  Users,
+  Loader2,
+  Building2,
+  UserCheck,
+} from 'lucide-react';
 import { toast } from 'sonner';
-import { getCaseById, changeCaseStatus, changeCaseBank, getCaseEventLogs, getSubestados } from '../../lib/api/cases';
+import {
+  getCaseById,
+  changeCaseStatus,
+  changeCaseBank,
+  getCaseEventLogs,
+  getSubestados,
+  updateAssignment,
+} from '../../lib/api/cases';
 import { getDocumentsByCase, uploadDocument, downloadDocument } from '../../lib/api/documents';
-import { getAnalistas } from '../../lib/api/users';
+import { getAnalistas, getUsers } from '../../lib/api/users';
+import { useAuth } from '../../lib/auth';
+import { EventLogDetails } from './EventLogDetails';
+import { EVENT_TYPE_LABELS } from '../../lib/eventLogFormat';
+import { ETAPAS_MACRO } from '../../lib/etapas';
 import type { CaseWithDetails, EtapaMacro, CatalogoSubestado, Document as DocType } from '../../lib/types';
-
-const ETAPAS: { value: EtapaMacro; label: string }[] = [
-  { value: 'preaprobacion', label: 'Preaprobación' },
-  { value: 'aprobacion', label: 'Aprobación' },
-  { value: 'legalizacion', label: 'Legalización' },
-  { value: 'desembolsado', label: 'Desembolsado' },
-];
 
 const BANCOS = [
   'Bancolombia', 'Davivienda', 'Banco de Bogotá', 'BBVA Colombia',
   'Banco Popular', 'Banco Occidente', 'Itaú',
 ];
+
+const UNASSIGNED_VALUE = '__unassigned__';
 
 interface ClienteDetalleProps {
   clienteId: string;
@@ -55,23 +63,28 @@ interface ClienteDetalleProps {
 }
 
 export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDetalleProps) {
+  const { isAdmin } = useAuth();
   const [caso, setCaso] = useState<CaseWithDetails | null>(null);
   const [documents, setDocuments] = useState<DocType[]>([]);
   const [eventLogs, setEventLogs] = useState<any[]>([]);
+  const [analistas, setAnalistas] = useState<{ id: string; nombre: string; rol: string }[]>([]);
+  const [userNameMap, setUserNameMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
-  const [cambioEstadoOpen, setCambioEstadoOpen] = useState(false);
-  const [cambioBancoOpen, setCambioBancoOpen] = useState(false);
   const [nuevaEtapa, setNuevaEtapa] = useState<EtapaMacro>('preaprobacion');
   const [nuevoSubestado, setNuevoSubestado] = useState('');
   const [nuevoBanco, setNuevoBanco] = useState('');
-  const [comentario, setComentario] = useState('');
+  const [comentarioEstado, setComentarioEstado] = useState('');
+  const [comentarioBanco, setComentarioBanco] = useState('');
   const [subestadosList, setSubestadosList] = useState<CatalogoSubestado[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [uploadOpen, setUploadOpen] = useState(false);
+  const [savingEstado, setSavingEstado] = useState(false);
+  const [savingBanco, setSavingBanco] = useState(false);
+  const [savingAsignacion, setSavingAsignacion] = useState(false);
+  const [selectedAnalista, setSelectedAnalista] = useState(UNASSIGNED_VALUE);
   const [uploadTipo, setUploadTipo] = useState<'carta_preaprobacion' | 'carta_aprobacion'>('carta_aprobacion');
   const [fechaCarta, setFechaCarta] = useState('');
   const [vigenciaDias, setVigenciaDias] = useState('90');
+  const [uploading, setUploading] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -86,8 +99,11 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
       setEventLogs(logsData);
       if (caseData.etapa_macro) {
         setNuevaEtapa(caseData.etapa_macro);
+        setNuevoSubestado(caseData.subestado ?? '');
       }
-    } catch (err) {
+      setNuevoBanco(caseData.banco_actual ?? '');
+      setSelectedAnalista(caseData.analista_delta_id ?? UNASSIGNED_VALUE);
+    } catch {
       toast.error('Error al cargar detalle del cliente');
     } finally {
       setLoading(false);
@@ -101,6 +117,23 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
   }, [open, clienteId]);
 
   useEffect(() => {
+    if (!open) return;
+
+    getUsers()
+      .then((users) => {
+        const map = Object.fromEntries(users.map((u) => [u.id, u.nombre]));
+        setUserNameMap(map);
+      })
+      .catch(() => setUserNameMap({}));
+
+    if (isAdmin) {
+      getAnalistas()
+        .then((data) => setAnalistas(data.filter((a) => a.rol === 'analista')))
+        .catch(() => setAnalistas([]));
+    }
+  }, [isAdmin, open]);
+
+  useEffect(() => {
     getSubestados(nuevaEtapa).then(setSubestadosList).catch(() => setSubestadosList([]));
   }, [nuevaEtapa]);
 
@@ -109,18 +142,17 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
       toast.error('Selecciona un subestado');
       return;
     }
-    setSaving(true);
+    setSavingEstado(true);
     try {
-      await changeCaseStatus(clienteId, nuevaEtapa, nuevoSubestado, comentario || undefined);
+      await changeCaseStatus(clienteId, nuevaEtapa, nuevoSubestado, comentarioEstado || undefined);
       toast.success('Estado actualizado exitosamente');
-      setCambioEstadoOpen(false);
-      setComentario('');
-      fetchData();
+      setComentarioEstado('');
+      await fetchData();
       onUpdate?.();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al cambiar estado');
     } finally {
-      setSaving(false);
+      setSavingEstado(false);
     }
   };
 
@@ -129,19 +161,40 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
       toast.error('Selecciona un banco');
       return;
     }
-    setSaving(true);
+    if (nuevoBanco === caso?.banco_actual) {
+      toast.error('El banco seleccionado es el mismo que el actual');
+      return;
+    }
+    setSavingBanco(true);
     try {
-      await changeCaseBank(clienteId, nuevoBanco, comentario || undefined);
+      await changeCaseBank(clienteId, nuevoBanco, comentarioBanco || undefined);
       toast.success('Banco actualizado exitosamente');
-      setCambioBancoOpen(false);
-      setNuevoBanco('');
-      setComentario('');
-      fetchData();
+      setComentarioBanco('');
+      await fetchData();
       onUpdate?.();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al cambiar banco');
     } finally {
-      setSaving(false);
+      setSavingBanco(false);
+    }
+  };
+
+  const handleAsignarAnalista = async () => {
+    const analistaId = selectedAnalista === UNASSIGNED_VALUE ? null : selectedAnalista;
+    if (analistaId === (caso?.analista_delta_id ?? null)) {
+      toast.error('El analista seleccionado ya está asignado');
+      return;
+    }
+    setSavingAsignacion(true);
+    try {
+      await updateAssignment(clienteId, { analista_delta_id: analistaId });
+      toast.success(analistaId ? 'Analista asignado exitosamente' : 'Asignación removida');
+      await fetchData();
+      onUpdate?.();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al asignar analista');
+    } finally {
+      setSavingAsignacion(false);
     }
   };
 
@@ -161,134 +214,171 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
-      setSaving(true);
+      setUploading(true);
       try {
         const metadata = uploadTipo === 'carta_aprobacion' && fechaCarta
           ? { fecha_carta: fechaCarta, vigencia_dias: parseInt(vigenciaDias) || 90 }
           : undefined;
         await uploadDocument(clienteId, file, uploadTipo, metadata);
         toast.success('Documento cargado exitosamente');
-        setUploadOpen(false);
         setFechaCarta('');
         setVigenciaDias('90');
-        fetchData();
+        await fetchData();
         onUpdate?.();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Error al cargar documento');
       } finally {
-        setSaving(false);
+        setUploading(false);
       }
     };
     input.click();
   };
 
-  const eventTypeLabels: Record<string, string> = {
-    STATUS_CHANGED: 'Cambio de estado',
-    BANK_CHANGED: 'Cambio de banco',
-    ASSIGNMENT_CHANGED: 'Cambio de asignación',
-    DOC_UPLOADED: 'Documento cargado',
-    IMPORTED_CREATED: 'Creado por importación',
-    IMPORTED_UPDATED: 'Actualizado por importación',
-    COMMENT_ADDED: 'Comentario',
-  };
-
   return (
-    <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-full sm:w-[600px] lg:w-[800px] overflow-y-auto">
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
+      <DialogContent className="flex max-h-[92vh] w-[min(960px,calc(100vw-2rem))] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
         {loading || !caso ? (
-          <div className="flex items-center justify-center h-64">
+          <div className="flex h-64 items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
           </div>
         ) : (
           <>
-            <SheetHeader>
-              <SheetTitle className="flex items-start justify-between">
+            <DialogHeader className="border-b border-gray-200 px-6 py-4">
+              <div className="flex flex-wrap items-start justify-between gap-3 pr-8">
                 <div>
-                  <h3 className="text-xl font-semibold">{caso.nombre_completo}</h3>
-                  <p className="text-sm text-gray-500 mt-1">CC {caso.cedula}</p>
+                  <DialogTitle className="text-xl">{caso.nombre_completo}</DialogTitle>
+                  <p className="mt-1 text-sm text-gray-500">CC {caso.cedula} · {caso.proyecto_nombre}</p>
                 </div>
-              </SheetTitle>
-            </SheetHeader>
-
-            <div className="mt-6 space-y-6">
-              <div className="flex flex-wrap gap-3">
-                <StatusBadge
-                  etapa={caso.etapa_macro ?? 'preaprobacion'}
-                  subestado={caso.subestado ?? undefined}
-                />
-                <VencimientoBadge diasRestantes={caso.dias_restantes ?? undefined} />
-                {caso.fecha_vencimiento && (
-                  <Badge variant="outline" className="gap-1">
-                    <Calendar className="h-3 w-3" />
-                    Vence: {caso.fecha_vencimiento}
-                  </Badge>
-                )}
+                <div className="flex flex-wrap gap-2">
+                  <StatusBadge
+                    etapa={caso.etapa_macro ?? 'preaprobacion'}
+                    subestado={caso.subestado ?? undefined}
+                  />
+                  <VencimientoBadge diasRestantes={caso.dias_restantes ?? undefined} />
+                  {caso.fecha_vencimiento && (
+                    <Badge variant="outline" className="gap-1">
+                      <Calendar className="h-3 w-3" />
+                      Vence: {caso.fecha_vencimiento}
+                    </Badge>
+                  )}
+                </div>
               </div>
+            </DialogHeader>
 
-              <div className="flex flex-wrap gap-2">
-                <Dialog open={cambioEstadoOpen} onOpenChange={setCambioEstadoOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">Cambiar Estado</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Cambiar Estado</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label>Nueva Etapa</Label>
-                        <Select value={nuevaEtapa} onValueChange={(v) => { setNuevaEtapa(v as EtapaMacro); setNuevoSubestado(''); }}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {ETAPAS.map((e) => (
-                              <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Nuevo Subestado</Label>
-                        <Select value={nuevoSubestado} onValueChange={setNuevoSubestado}>
-                          <SelectTrigger><SelectValue placeholder="Selecciona subestado" /></SelectTrigger>
-                          <SelectContent>
-                            {subestadosList.map((sub) => (
-                              <SelectItem key={sub.id} value={sub.nombre}>{sub.nombre}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Comentario (opcional)</Label>
-                        <Textarea value={comentario} onChange={(e) => setComentario(e.target.value)} placeholder="Motivo del cambio..." />
-                      </div>
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              <div className="grid gap-5 lg:grid-cols-2">
+                <section className="rounded-lg border border-gray-200 bg-gray-50/60 p-4">
+                  <h4 className="mb-4 flex items-center gap-2 text-sm font-semibold">
+                    <History className="h-4 w-4" />
+                    Gestionar estado
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label>Etapa</Label>
+                      <Select
+                        value={nuevaEtapa}
+                        onValueChange={(v) => {
+                          setNuevaEtapa(v as EtapaMacro);
+                          setNuevoSubestado('');
+                        }}
+                      >
+                        <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {ETAPAS_MACRO.map((e) => (
+                            <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setCambioEstadoOpen(false)} disabled={saving}>Cancelar</Button>
-                      <Button onClick={handleCambioEstado} disabled={saving}>
-                        {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                        Guardar
-                      </Button>
+                    <div className="space-y-1.5">
+                      <Label>Subestado</Label>
+                      <Select value={nuevoSubestado} onValueChange={setNuevoSubestado}>
+                        <SelectTrigger className="bg-white">
+                          <SelectValue placeholder="Selecciona subestado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {subestadosList.map((sub) => (
+                            <SelectItem key={sub.id} value={sub.nombre}>{sub.nombre}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  </DialogContent>
-                </Dialog>
+                    <div className="space-y-1.5">
+                      <Label>Comentario (opcional)</Label>
+                      <Textarea
+                        value={comentarioEstado}
+                        onChange={(e) => setComentarioEstado(e.target.value)}
+                        placeholder="Motivo del cambio..."
+                        className="bg-white"
+                        rows={2}
+                      />
+                    </div>
+                    <Button
+                      className="w-full"
+                      onClick={handleCambioEstado}
+                      disabled={savingEstado || !nuevoSubestado}
+                    >
+                      {savingEstado && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Guardar estado
+                    </Button>
+                  </div>
+                </section>
 
-                <Dialog open={cambioBancoOpen} onOpenChange={setCambioBancoOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">Cambiar Banco</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Cambiar Banco</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div>
-                        <Label className="text-sm text-gray-600">Banco Actual</Label>
-                        <p className="text-sm font-medium mt-1">{caso.banco_actual}</p>
+                <div className="space-y-5">
+                  {isAdmin && (
+                    <section className="rounded-lg border border-blue-200 bg-blue-50/40 p-4">
+                      <h4 className="mb-4 flex items-center gap-2 text-sm font-semibold">
+                        <UserCheck className="h-4 w-4 text-blue-700" />
+                        Asignar analista
+                      </h4>
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <Label>Analista responsable</Label>
+                          <Select value={selectedAnalista} onValueChange={setSelectedAnalista}>
+                            <SelectTrigger className="bg-white">
+                              <SelectValue placeholder="Selecciona un analista" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={UNASSIGNED_VALUE}>Sin asignar</SelectItem>
+                              {analistas.map((a) => (
+                                <SelectItem key={a.id} value={a.id}>{a.nombre}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {caso.analista_delta_nombre && (
+                            <p className="text-xs text-gray-500">
+                              Actual: {caso.analista_delta_nombre}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          variant="secondary"
+                          className="w-full"
+                          onClick={handleAsignarAnalista}
+                          disabled={savingAsignacion}
+                        >
+                          {savingAsignacion && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          Guardar asignación
+                        </Button>
                       </div>
-                      <div className="space-y-2">
-                        <Label>Nuevo Banco</Label>
+                    </section>
+                  )}
+
+                  <section className="rounded-lg border border-gray-200 bg-gray-50/60 p-4">
+                    <h4 className="mb-4 flex items-center gap-2 text-sm font-semibold">
+                      <Building2 className="h-4 w-4" />
+                      Cambiar banco
+                    </h4>
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-600">
+                        Banco actual: <span className="font-medium text-gray-900">{caso.banco_actual}</span>
+                      </p>
+                      <div className="space-y-1.5">
+                        <Label>Nuevo banco</Label>
                         <Select value={nuevoBanco} onValueChange={setNuevoBanco}>
-                          <SelectTrigger><SelectValue placeholder="Selecciona un banco" /></SelectTrigger>
+                          <SelectTrigger className="bg-white">
+                            <SelectValue placeholder="Selecciona un banco" />
+                          </SelectTrigger>
                           <SelectContent>
                             {BANCOS.map((b) => (
                               <SelectItem key={b} value={b}>{b}</SelectItem>
@@ -296,71 +386,31 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <Label>Comentario (opcional)</Label>
-                        <Textarea value={comentario} onChange={(e) => setComentario(e.target.value)} placeholder="Motivo del cambio..." />
+                        <Textarea
+                          value={comentarioBanco}
+                          onChange={(e) => setComentarioBanco(e.target.value)}
+                          placeholder="Motivo del cambio..."
+                          className="bg-white"
+                          rows={2}
+                        />
                       </div>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setCambioBancoOpen(false)} disabled={saving}>Cancelar</Button>
-                      <Button onClick={handleCambioBanco} disabled={saving}>
-                        {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                        Cambiar Banco
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={handleCambioBanco}
+                        disabled={savingBanco || !nuevoBanco}
+                      >
+                        {savingBanco && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Guardar banco
                       </Button>
                     </div>
-                  </DialogContent>
-                </Dialog>
-
-                <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Upload className="h-4 w-4 mr-2" />
-                      Subir Documento
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Subir Documento</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label>Tipo de Documento</Label>
-                        <Select value={uploadTipo} onValueChange={(v: any) => setUploadTipo(v)}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="carta_preaprobacion">Carta de Preaprobación</SelectItem>
-                            <SelectItem value="carta_aprobacion">Carta de Aprobación</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      {uploadTipo === 'carta_aprobacion' && (
-                        <>
-                          <div className="space-y-2">
-                            <Label>Fecha de Aprobación</Label>
-                            <Input type="date" value={fechaCarta} onChange={(e) => setFechaCarta(e.target.value)} />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Vigencia (días)</Label>
-                            <Input type="number" value={vigenciaDias} onChange={(e) => setVigenciaDias(e.target.value)} min="1" max="365" />
-                          </div>
-                          <p className="text-xs text-gray-500">
-                            Al subir la carta de aprobación se actualizará automáticamente la fecha y vigencia del caso.
-                          </p>
-                        </>
-                      )}
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setUploadOpen(false)} disabled={saving}>Cancelar</Button>
-                      <Button onClick={handleUploadFile} disabled={saving}>
-                        {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                        Seleccionar Archivo
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                  </section>
+                </div>
               </div>
 
-              <Separator />
+              <Separator className="my-6" />
 
               <Tabs defaultValue="resumen" className="space-y-4">
                 <TabsList className="grid w-full grid-cols-4">
@@ -372,13 +422,13 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
 
                 <TabsContent value="resumen" className="space-y-6">
                   <div>
-                    <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold">
                       <Users className="h-4 w-4" />
-                      Datos del Cliente
+                      Datos del cliente
                     </h4>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="text-gray-600">Nombre Completo</p>
+                        <p className="text-gray-600">Nombre completo</p>
                         <p className="font-medium">{caso.nombre_completo}</p>
                       </div>
                       <div>
@@ -399,22 +449,22 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
                   <Separator />
 
                   <div>
-                    <h4 className="text-sm font-semibold mb-3">Información Financiera</h4>
+                    <h4 className="mb-3 text-sm font-semibold">Información financiera</h4>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="text-gray-600">Monto Inmueble</p>
-                        <p className="font-medium text-lg">
+                        <p className="text-gray-600">Monto inmueble</p>
+                        <p className="text-lg font-medium">
                           ${(caso.monto_inmueble ?? 0).toLocaleString('es-CO')}
                         </p>
                       </div>
                       <div>
-                        <p className="text-gray-600">Monto a Financiar</p>
-                        <p className="font-medium text-lg">
+                        <p className="text-gray-600">Monto a financiar</p>
+                        <p className="text-lg font-medium">
                           ${(caso.monto_a_financiar ?? 0).toLocaleString('es-CO')}
                         </p>
                       </div>
                       <div>
-                        <p className="text-gray-600">Banco Actual</p>
+                        <p className="text-gray-600">Banco actual</p>
                         <p className="font-medium">{caso.banco_actual}</p>
                       </div>
                       <div>
@@ -427,7 +477,7 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
                       {caso.fecha_carta_aprobacion && (
                         <>
                           <div>
-                            <p className="text-gray-600">Fecha Aprobación</p>
+                            <p className="text-gray-600">Fecha aprobación</p>
                             <p className="font-medium">{caso.fecha_carta_aprobacion}</p>
                           </div>
                           <div>
@@ -435,11 +485,11 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
                             <p className="font-medium">{caso.vigencia_dias} días</p>
                           </div>
                           <div>
-                            <p className="text-gray-600">Fecha Vencimiento</p>
+                            <p className="text-gray-600">Fecha vencimiento</p>
                             <p className="font-medium">{caso.fecha_vencimiento}</p>
                           </div>
                           <div>
-                            <p className="text-gray-600">Días Restantes</p>
+                            <p className="text-gray-600">Días restantes</p>
                             <VencimientoBadge diasRestantes={caso.dias_restantes ?? undefined} />
                           </div>
                         </>
@@ -449,25 +499,75 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
                 </TabsContent>
 
                 <TabsContent value="documentos" className="space-y-4">
+                  <div className="rounded-lg border border-gray-200 bg-gray-50/60 p-4">
+                    <h4 className="mb-3 text-sm font-semibold">Subir documento</h4>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label>Tipo</Label>
+                        <Select value={uploadTipo} onValueChange={(v: 'carta_preaprobacion' | 'carta_aprobacion') => setUploadTipo(v)}>
+                          <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="carta_preaprobacion">Carta de preaprobación</SelectItem>
+                            <SelectItem value="carta_aprobacion">Carta de aprobación</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {uploadTipo === 'carta_aprobacion' && (
+                        <>
+                          <div className="space-y-1.5">
+                            <Label>Fecha de aprobación</Label>
+                            <Input
+                              type="date"
+                              value={fechaCarta}
+                              onChange={(e) => setFechaCarta(e.target.value)}
+                              className="bg-white"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label>Vigencia (días)</Label>
+                            <Input
+                              type="number"
+                              value={vigenciaDias}
+                              onChange={(e) => setVigenciaDias(e.target.value)}
+                              min="1"
+                              max="365"
+                              className="bg-white"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={handleUploadFile}
+                      disabled={uploading}
+                    >
+                      {uploading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="mr-2 h-4 w-4" />
+                      )}
+                      Seleccionar archivo
+                    </Button>
+                  </div>
+
                   {documents.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <FileText className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                    <div className="py-8 text-center text-gray-500">
+                      <FileText className="mx-auto mb-2 h-8 w-8 text-gray-300" />
                       <p>No hay documentos cargados</p>
-                      <Button variant="outline" size="sm" className="mt-3" onClick={() => setUploadOpen(true)}>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Subir primer documento
-                      </Button>
                     </div>
                   ) : (
                     documents.map((doc) => (
-                      <div key={doc.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                      <div key={doc.id} className="flex items-center justify-between rounded-lg border border-gray-200 p-4">
                         <div className="flex items-center gap-3">
                           <FileText className="h-5 w-5 text-gray-400" />
                           <div>
                             <p className="text-sm font-medium">{doc.file_name}</p>
                             <p className="text-xs text-gray-500">
-                              {doc.tipo === 'carta_preaprobacion' ? 'Carta Preaprobación' : 'Carta Aprobación'}
-                              {' • '}
+                              {doc.tipo === 'carta_preaprobacion' ? 'Carta preaprobación' : 'Carta aprobación'}
+                              {' · '}
                               {new Date(doc.uploaded_at).toLocaleDateString('es-CO')}
                             </p>
                           </div>
@@ -482,34 +582,35 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
 
                 <TabsContent value="historial">
                   {eventLogs.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-8">
+                    <p className="py-8 text-center text-sm text-gray-500">
                       No hay eventos en el historial
                     </p>
                   ) : (
                     <div className="relative">
-                      <div className="absolute left-4 top-0 bottom-0 w-px bg-gray-200" />
+                      <div className="absolute top-0 bottom-0 left-4 w-px bg-gray-200" />
                       {eventLogs.map((evento) => (
                         <div key={evento.id} className="relative flex gap-4 pb-8 last:pb-0">
                           <div className="relative z-10">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white border-2 border-gray-300">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-gray-300 bg-white">
                               <History className="h-4 w-4 text-gray-600" />
                             </div>
                           </div>
                           <div className="flex-1 pt-1">
                             <p className="text-sm font-medium">
-                              {eventTypeLabels[evento.event_type] ?? evento.event_type}
+                              {EVENT_TYPE_LABELS[evento.event_type] ?? evento.event_type}
                             </p>
                             {evento.comment && (
-                              <p className="text-sm text-gray-600 mt-0.5">{evento.comment}</p>
-                            )}
-                            {evento.payload && typeof evento.payload === 'object' && (
-                              <p className="text-xs text-gray-500 mt-0.5">
-                                {evento.payload.from && evento.payload.to
-                                  ? `${evento.payload.from} → ${evento.payload.to}`
-                                  : JSON.stringify(evento.payload)}
+                              <p className="mt-1 rounded-md border border-amber-100 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                                <span className="font-medium">Comentario: </span>
+                                {evento.comment}
                               </p>
                             )}
-                            <div className="flex items-center gap-2 mt-1">
+                            <EventLogDetails
+                              eventType={evento.event_type}
+                              payload={evento.payload as Record<string, unknown>}
+                              userNameMap={userNameMap}
+                            />
+                            <div className="mt-2 flex items-center gap-2">
                               <p className="text-xs text-gray-500">
                                 {new Date(evento.created_at).toLocaleString('es-CO', {
                                   year: 'numeric', month: 'short', day: 'numeric',
@@ -518,7 +619,7 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
                               </p>
                               {evento.actor?.nombre && (
                                 <>
-                                  <span className="text-xs text-gray-400">•</span>
+                                  <span className="text-xs text-gray-400">·</span>
                                   <p className="text-xs text-gray-500">{evento.actor.nombre}</p>
                                 </>
                               )}
@@ -531,18 +632,18 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
                 </TabsContent>
 
                 <TabsContent value="asignaciones">
-                  <div className="space-y-4">
-                    <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="space-y-3">
+                    <div className="rounded-lg border border-gray-200 p-4">
                       <p className="text-sm font-medium">Analista Delta</p>
-                      <p className="text-sm text-gray-600 mt-1">{caso.analista_delta_nombre || 'Sin asignar'}</p>
+                      <p className="mt-1 text-sm text-gray-600">{caso.analista_delta_nombre || 'Sin asignar'}</p>
                     </div>
-                    <div className="p-4 border border-gray-200 rounded-lg">
-                      <p className="text-sm font-medium">Analista de Radicación</p>
-                      <p className="text-sm text-gray-600 mt-1">{caso.analista_radicacion_nombre || 'Sin asignar'}</p>
+                    <div className="rounded-lg border border-gray-200 p-4">
+                      <p className="text-sm font-medium">Analista de radicación</p>
+                      <p className="mt-1 text-sm text-gray-600">{caso.analista_radicacion_nombre || 'Sin asignar'}</p>
                     </div>
-                    <div className="p-4 border border-gray-200 rounded-lg">
-                      <p className="text-sm font-medium">Analista de Legalización</p>
-                      <p className="text-sm text-gray-600 mt-1">{caso.analista_legalizacion_nombre || 'Sin asignar'}</p>
+                    <div className="rounded-lg border border-gray-200 p-4">
+                      <p className="text-sm font-medium">Analista de legalización</p>
+                      <p className="mt-1 text-sm text-gray-600">{caso.analista_legalizacion_nombre || 'Sin asignar'}</p>
                     </div>
                   </div>
                 </TabsContent>
@@ -550,7 +651,7 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
             </div>
           </>
         )}
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
