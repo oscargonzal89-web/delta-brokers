@@ -7,6 +7,7 @@ import {
   AlertCircle,
   LogOut,
   ClipboardList,
+  Settings,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
@@ -20,7 +21,7 @@ const navigation = [
   { name: 'Importaciones', href: '/importaciones', icon: Upload, coordinatorOnly: true },
   { name: 'Clientes', href: '/clientes', icon: Users },
   { name: 'Vencimientos', href: '/vencimientos', icon: AlertCircle },
-  { name: 'Seguimiento Analistas', href: '/seguimiento-analistas', icon: ClipboardList },
+  { name: 'Seguimiento Analistas', href: '/seguimiento-analistas', icon: ClipboardList, coordinatorOnly: true },
   { name: 'Usuarios y Roles', href: '/usuarios', icon: Settings, adminOnly: true },
 ];
 

@@ -26,12 +26,19 @@ import { getAnalistas } from '../../lib/api/users';
 import { ClienteDetalle } from '../components/ClienteDetalle';
 import { ETAPAS_MACRO } from '../../lib/etapas';
 import { BANCOS } from '../../lib/constants';
+import { useAuth } from '../../lib/auth';
 import type { CaseWithDetails, EtapaMacro, CatalogoSubestado } from '../../lib/types';
 const CIUDADES = ['Bogotá', 'Medellín', 'Cali', 'Barranquilla', 'Cartagena', 'Bucaramanga'];
 const PAGE_SIZE = 50;
 
 export function Clientes() {
   const [searchParams] = useSearchParams();
+  const { profile, isAdmin, isCoordinatorOrAdmin } = useAuth();
+
+  // When the user is a pure analyst, lock the filter to their own ID
+  const isAnalista = !isCoordinatorOrAdmin;
+  const myId = profile?.id ?? '';
+
   const [busqueda, setBusqueda] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filtroEtapa, setFiltroEtapa] = useState<string>('todas');
@@ -85,6 +92,8 @@ export function Clientes() {
   }, [filtroEtapa]);
 
   const fetchCases = useCallback(async () => {
+    // Wait until we have the user profile
+    if (!myId && isAnalista) return;
     try {
       setLoading(true);
       const filters: CaseFilters = { page, pageSize: PAGE_SIZE };
@@ -93,7 +102,12 @@ export function Clientes() {
       if (filtroSubestado !== 'todos') filters.subestado = filtroSubestado;
       if (filtroBanco !== 'todos') filters.bancoActual = filtroBanco;
       if (filtroCiudad !== 'todas') filters.ciudadInmueble = filtroCiudad;
-      if (filtroAnalista !== 'todos') filters.analistaId = filtroAnalista;
+      // Analysts always see only their own cases; coordinators/admins can filter optionally
+      if (isAnalista) {
+        filters.analistaId = myId;
+      } else if (filtroAnalista !== 'todos') {
+        filters.analistaId = filtroAnalista;
+      }
       if (debouncedSearch) filters.search = debouncedSearch;
 
       const result = await getCases(filters);
@@ -106,7 +120,7 @@ export function Clientes() {
     } finally {
       setLoading(false);
     }
-  }, [page, filtroEtapa, filtroSubestado, filtroBanco, filtroCiudad, filtroAnalista, debouncedSearch]);
+  }, [page, filtroEtapa, filtroSubestado, filtroBanco, filtroCiudad, filtroAnalista, debouncedSearch, isAnalista, myId]);
 
   useEffect(() => {
     setPage(1);
@@ -129,7 +143,7 @@ export function Clientes() {
           />
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className={`grid grid-cols-2 gap-3 ${isAnalista ? 'md:grid-cols-4' : 'md:grid-cols-5'}`}>
           <div>
             <Label className="text-xs text-gray-600">Etapa</Label>
             <Select value={filtroEtapa} onValueChange={setFiltroEtapa}>
@@ -194,20 +208,22 @@ export function Clientes() {
             </Select>
           </div>
 
-          <div>
-            <Label className="text-xs text-gray-600">Analista</Label>
-            <Select value={filtroAnalista} onValueChange={setFiltroAnalista}>
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos</SelectItem>
-                {analistas.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>{a.nombre}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {!isAnalista && (
+            <div>
+              <Label className="text-xs text-gray-600">Analista</Label>
+              <Select value={filtroAnalista} onValueChange={setFiltroAnalista}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  {analistas.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{a.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between">

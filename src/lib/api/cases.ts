@@ -35,7 +35,11 @@ export async function getCases(filters: CaseFilters = {}): Promise<PaginatedResu
   if (filters.subestado) query = query.eq('subestado', filters.subestado);
   if (filters.bancoActual) query = query.eq('banco_actual', filters.bancoActual);
   if (filters.ciudadInmueble) query = query.eq('ciudad_inmueble', filters.ciudadInmueble);
-  if (filters.analistaId) query = query.eq('analista_delta_id', filters.analistaId);
+  if (filters.analistaId) {
+    query = query.or(
+      `analista_delta_id.eq.${filters.analistaId},analista_radicacion_id.eq.${filters.analistaId},analista_legalizacion_id.eq.${filters.analistaId}`
+    );
+  }
   if (filters.search) {
     query = query.or(
       `nombre_completo.ilike.%${filters.search}%,cedula.ilike.%${filters.search}%`
