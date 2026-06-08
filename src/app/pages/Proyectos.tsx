@@ -28,14 +28,8 @@ import {
 import { Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getProjects, getProjectKpis, createProject } from '../../lib/api/projects';
+import { BANCOS, CIUDADES, TIPOS_VIVIENDA } from '../../lib/constants';
 import type { Project, DashboardKpi } from '../../lib/types';
-
-const BANCOS = [
-  'Bancolombia', 'Davivienda', 'Banco de Bogotá', 'BBVA Colombia',
-  'Banco Popular', 'Banco Occidente', 'Itaú',
-];
-
-const CIUDADES = ['Bogotá', 'Medellín', 'Cali', 'Barranquilla', 'Cartagena', 'Bucaramanga'];
 
 export function Proyectos() {
   const navigate = useNavigate();
@@ -43,6 +37,8 @@ export function Proyectos() {
   const [nombre, setNombre] = useState('');
   const [ciudad, setCiudad] = useState('');
   const [bancoPrincipal, setBancoPrincipal] = useState('');
+  const [etapaProyecto, setEtapaProyecto] = useState('');
+  const [tipoVivienda, setTipoVivienda] = useState('');
   const [creating, setCreating] = useState(false);
 
   const [projects, setProjects] = useState<Project[]>([]);
@@ -77,7 +73,7 @@ export function Proyectos() {
 
   const handleCreate = async () => {
     if (!nombre || !ciudad || !bancoPrincipal) {
-      toast.error('Por favor completa todos los campos');
+      toast.error('Nombre, ciudad y banco son obligatorios');
       return;
     }
 
@@ -87,12 +83,16 @@ export function Proyectos() {
         nombre,
         ciudad,
         banco_financiador_principal: bancoPrincipal,
+        etapa_proyecto: etapaProyecto || null,
+        tipo_vivienda: tipoVivienda || null,
       });
       toast.success(`Proyecto "${nombre}" creado exitosamente`);
       setOpen(false);
       setNombre('');
       setCiudad('');
       setBancoPrincipal('');
+      setEtapaProyecto('');
+      setTipoVivienda('');
       fetchData();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al crear proyecto');
@@ -115,9 +115,7 @@ export function Proyectos() {
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
           <p className="font-medium">Error al cargar proyectos</p>
           <p className="text-sm mt-1">{error}</p>
-          <Button variant="outline" className="mt-3" onClick={fetchData}>
-            Reintentar
-          </Button>
+          <Button variant="outline" className="mt-3" onClick={fetchData}>Reintentar</Button>
         </div>
       </div>
     );
@@ -137,13 +135,13 @@ export function Proyectos() {
               Crear Proyecto
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Crear Nuevo Proyecto</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="nombre">Nombre del Proyecto</Label>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="nombre">Nombre del Proyecto *</Label>
                 <Input
                   id="nombre"
                   placeholder="Ej: Torres del Norte"
@@ -152,47 +150,63 @@ export function Proyectos() {
                   disabled={creating}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="ciudad">Ciudad</Label>
+
+              <div className="space-y-1.5">
+                <Label>Ciudad *</Label>
                 <Select value={ciudad} onValueChange={setCiudad} disabled={creating}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona una ciudad" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecciona una ciudad" /></SelectTrigger>
                   <SelectContent>
                     {CIUDADES.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="banco">Banco Financiador Principal</Label>
+
+              <div className="space-y-1.5">
+                <Label>Banco financiador principal *</Label>
                 <Select value={bancoPrincipal} onValueChange={setBancoPrincipal} disabled={creating}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona un banco" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecciona un banco" /></SelectTrigger>
                   <SelectContent>
                     {BANCOS.map((b) => (
-                      <SelectItem key={b} value={b}>
-                        {b}
-                      </SelectItem>
+                      <SelectItem key={b} value={b}>{b}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-1.5">
+                <Label>Tipo de vivienda</Label>
+                <Select value={tipoVivienda} onValueChange={setTipoVivienda} disabled={creating}>
+                  <SelectTrigger><SelectValue placeholder="Selecciona tipo" /></SelectTrigger>
+                  <SelectContent>
+                    {TIPOS_VIVIENDA.map((t) => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="etapa">Etapa del proyecto</Label>
+                <Input
+                  id="etapa"
+                  placeholder="Ej: Preventa, Construcción, Entrega..."
+                  value={etapaProyecto}
+                  onChange={(e) => setEtapaProyecto(e.target.value)}
+                  disabled={creating}
+                  maxLength={200}
+                />
+              </div>
             </div>
+
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setOpen(false)} disabled={creating}>
                 Cancelar
               </Button>
               <Button onClick={handleCreate} disabled={creating}>
                 {creating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Creando...
-                  </>
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creando...</>
                 ) : (
                   'Crear Proyecto'
                 )}
@@ -202,20 +216,23 @@ export function Proyectos() {
         </Dialog>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
         {projects.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
             <p className="text-lg font-medium">No hay proyectos</p>
             <p className="text-sm mt-1">Crea tu primer proyecto para comenzar</p>
           </div>
         ) : (
-          <Table>
+          <Table className="min-w-[1250px]">
             <TableHeader>
               <TableRow>
+                <TableHead className="min-w-[180px]">Proyecto</TableHead>
                 <TableHead>Ciudad</TableHead>
-                <TableHead>Proyecto</TableHead>
-                <TableHead>Banco Principal</TableHead>
-                <TableHead className="text-center">Total Clientes</TableHead>
+                <TableHead className="min-w-[180px]">Banco Principal</TableHead>
+                <TableHead className="min-w-[120px]">Tipo Vivienda</TableHead>
+                <TableHead className="min-w-[160px]">Etapa Proyecto</TableHead>
+                <TableHead className="min-w-[140px]">Fecha Escritura</TableHead>
+                <TableHead className="text-center">Total</TableHead>
                 <TableHead className="text-center">Preaprobación</TableHead>
                 <TableHead className="text-center">Aprobación</TableHead>
                 <TableHead className="text-center">Legalización</TableHead>
@@ -232,12 +249,25 @@ export function Proyectos() {
                     className="cursor-pointer hover:bg-gray-50"
                     onClick={() => navigate(`/proyectos/${proyecto.id}`)}
                   >
-                    <TableCell>{proyecto.ciudad}</TableCell>
                     <TableCell className="font-medium">{proyecto.nombre}</TableCell>
-                    <TableCell>{proyecto.banco_financiador_principal}</TableCell>
-                    <TableCell className="text-center font-semibold">
-                      {kpi?.total_clientes ?? 0}
+                    <TableCell>{proyecto.ciudad}</TableCell>
+                    <TableCell className="text-sm">{proyecto.banco_financiador_principal}</TableCell>
+                    <TableCell className="text-sm">
+                      {proyecto.tipo_vivienda ? (
+                        <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-600/20">
+                          {proyecto.tipo_vivienda}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
                     </TableCell>
+                    <TableCell className="text-sm text-gray-700">
+                      {proyecto.etapa_proyecto || <span className="text-gray-400">-</span>}
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-700">
+                      {proyecto.fecha_proyectada_escritura || <span className="text-gray-400">-</span>}
+                    </TableCell>
+                    <TableCell className="text-center font-semibold">{kpi?.total_clientes ?? 0}</TableCell>
                     <TableCell className="text-center">{kpi?.preaprobacion ?? 0}</TableCell>
                     <TableCell className="text-center">{kpi?.aprobacion ?? 0}</TableCell>
                     <TableCell className="text-center">{kpi?.legalizacion ?? 0}</TableCell>

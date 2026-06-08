@@ -22,9 +22,8 @@ import { Label } from '../components/ui/label';
 import { ClienteDetalle } from '../components/ClienteDetalle';
 import { getVencimientosPorRango } from '../../lib/api/analytics';
 import { getProjects } from '../../lib/api/projects';
+import { BANCOS } from '../../lib/constants';
 import type { Project, VencimientoPorRango } from '../../lib/types';
-
-const BANCOS = ['Bancolombia', 'Davivienda', 'Banco de Bogotá', 'BBVA Colombia', 'Banco Popular', 'Banco Occidente', 'Itaú'];
 
 export function Vencimientos() {
   const [filtroProyecto, setFiltroProyecto] = useState<string>('todos');

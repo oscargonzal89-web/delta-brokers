@@ -35,8 +35,7 @@ import { getProjects } from '../../lib/api/projects';
 import { getAnalistas } from '../../lib/api/users';
 import type { Project, CaseWithDetails } from '../../lib/types';
 
-const CIUDADES = ['Bogotá', 'Medellín', 'Cali', 'Barranquilla', 'Cartagena', 'Bucaramanga'];
-const BANCOS = ['Bancolombia', 'Davivienda', 'Banco de Bogotá', 'BBVA Colombia', 'Banco Popular', 'Banco Occidente', 'Itaú'];
+import { BANCOS, CIUDADES } from '../../lib/constants';
 
 export function Dashboard() {
   const navigate = useNavigate();
