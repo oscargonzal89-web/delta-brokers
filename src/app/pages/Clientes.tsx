@@ -20,7 +20,7 @@ import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
 import { StatusBadge } from '../components/StatusBadge';
 import { VencimientoBadge } from '../components/VencimientoBadge';
-import { Search, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Loader2, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { getCases, getSubestados, type CaseFilters } from '../../lib/api/cases';
 import { getAnalistas } from '../../lib/api/users';
 import { ClienteDetalle } from '../components/ClienteDetalle';
@@ -130,6 +130,81 @@ export function Clientes() {
     fetchCases();
   }, [fetchCases]);
 
+  const handleDownload = async () => {
+    try {
+      // Fetch all records without pagination
+      const result = await getCases({ pageSize: 10000 });
+      const rows = result.data;
+
+      const COLUMNS: { header: string; key: keyof typeof rows[0] }[] = [
+        // Persona
+        { header: 'Nombre Cliente', key: 'nombre_cliente' },
+        { header: 'Cédula', key: 'cedula' },
+        { header: 'Correo', key: 'correo' },
+        { header: 'Celular', key: 'celular' },
+        { header: 'Ciudad Cliente', key: 'ciudad_cliente' },
+        { header: 'Ocupación', key: 'ocupacion' },
+        { header: 'Calificación Solicitante', key: 'calificacion_solicitante' },
+        { header: 'Score', key: 'score' },
+        { header: 'Puntaje Mínimo', key: 'puntaje_minimo' },
+        { header: 'Ingreso Automático', key: 'ingreso_automatico' },
+        { header: 'Deudas', key: 'deudas' },
+        { header: 'Gastos Básicos', key: 'gastos_basicos' },
+        { header: 'Total Egresos', key: 'total_egresos' },
+        // Comprador 2
+        { header: 'Nombre Comprador 2', key: 'nombre_cliente_comprador_2' },
+        { header: 'Cédula Comprador 2', key: 'cedula_comprador_2' },
+        { header: 'Celular Comprador 2', key: 'celular_comprador_2' },
+        { header: 'Correo Comprador 2', key: 'correo_comprador_2' },
+        // Caso
+        { header: 'Etapa', key: 'etapa_macro' },
+        { header: 'Subestado', key: 'subestado' },
+        { header: 'Banco Actual', key: 'banco_actual' },
+        { header: 'Ciudad Inmueble', key: 'ciudad_inmueble' },
+        { header: 'Torre', key: 'torre' },
+        { header: 'Apto', key: 'apto' },
+        { header: 'Monto Inmueble', key: 'monto_inmueble' },
+        { header: 'Monto a Financiar', key: 'monto_a_financiar' },
+        { header: 'Monto Aprobado', key: 'monto_aprobado' },
+        { header: 'Monto Desembolsado', key: 'monto_desembolsado' },
+        { header: 'Fecha Carta Aprobación', key: 'fecha_carta_aprobacion' },
+        { header: 'Vigencia (días)', key: 'vigencia_dias' },
+        { header: 'Fecha Vencimiento', key: 'fecha_vencimiento' },
+        // Proyecto
+        { header: 'Proyecto', key: 'proyecto_nombre' },
+        { header: 'Ciudad Proyecto', key: 'proyecto_ciudad' },
+        { header: 'Banco Financiador', key: 'banco_financiador_principal' },
+        { header: 'Tipo Vivienda', key: 'tipo_vivienda' },
+        { header: 'Etapa Proyecto', key: 'etapa_proyecto' },
+        { header: 'Fecha Proyectada Escritura', key: 'fecha_proyectada_escritura' },
+      ];
+
+      const escape = (val: any) => {
+        if (val === null || val === undefined) return '';
+        const str = String(val);
+        return str.includes(',') || str.includes('"') || str.includes('\n')
+          ? `"${str.replace(/"/g, '""')}"`
+          : str;
+      };
+
+      const header = COLUMNS.map((c) => escape(c.header)).join(',');
+      const body = rows
+        .map((row) => COLUMNS.map((c) => escape(row[c.key])).join(','))
+        .join('\n');
+
+      const csv = `${header}\n${body}`;
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `clientes_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert('Error al generar el archivo CSV');
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="bg-white border-b border-gray-200 p-4 space-y-4 sticky top-0 z-10">
@@ -227,9 +302,17 @@ export function Clientes() {
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">
-            Mostrando {cases.length} de {totalCount} clientes
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-600">
+              Mostrando {cases.length} de {totalCount} clientes
+            </span>
+            {isAdmin && (
+              <Button variant="outline" size="sm" onClick={handleDownload}>
+                <Download className="h-4 w-4 mr-1.5" />
+                Descargar CSV
+              </Button>
+            )}
+          </div>
           {totalPages > 1 && (
             <div className="flex items-center gap-2">
               <Button
