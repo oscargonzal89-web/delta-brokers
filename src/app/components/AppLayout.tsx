@@ -5,21 +5,13 @@ import {
   Upload,
   Users,
   AlertCircle,
-  Settings,
   LogOut,
   ClipboardList,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
 import { Avatar, AvatarFallback } from './ui/avatar';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from './ui/dropdown-menu';
+
 import { useAuth } from '../../lib/auth';
 
 const navigation = [
@@ -96,37 +88,30 @@ export function AppLayout() {
 
         <Separator />
 
-        <div className="p-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="w-full justify-start gap-3 px-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-gray-200 text-gray-700 text-xs">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 text-left">
-                  <p className="text-sm font-medium">{profile?.nombre ?? 'Cargando...'}</p>
-                  <p className="text-xs text-gray-500">
-                    {profile?.rol ? rolLabels[profile.rol] ?? profile.rol : ''}
-                  </p>
-                </div>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                Configuración
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-red-600">
-                <LogOut className="mr-2 h-4 w-4" />
-                Cerrar Sesión
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="p-4 space-y-2">
+          {/* User info */}
+          <div className="flex items-center gap-3 px-3 py-2">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="bg-gray-200 text-gray-700 text-xs">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{profile?.nombre ?? 'Cargando...'}</p>
+              <p className="text-xs text-gray-500">
+                {profile?.rol ? rolLabels[profile.rol] ?? profile.rol : ''}
+              </p>
+            </div>
+          </div>
+          {/* Logout button — always visible */}
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4" />
+            Cerrar Sesión
+          </Button>
         </div>
       </aside>
 
