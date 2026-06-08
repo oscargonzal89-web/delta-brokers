@@ -24,6 +24,7 @@ import { Search, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getCases, getSubestados, type CaseFilters } from '../../lib/api/cases';
 import { getAnalistas } from '../../lib/api/users';
 import { ClienteDetalle } from '../components/ClienteDetalle';
+import { ETAPAS_MACRO } from '../../lib/etapas';
 import type { CaseWithDetails, EtapaMacro, CatalogoSubestado } from '../../lib/types';
 
 const BANCOS = [
@@ -31,13 +32,6 @@ const BANCOS = [
   'Banco Popular', 'Banco Occidente', 'Itaú',
 ];
 const CIUDADES = ['Bogotá', 'Medellín', 'Cali', 'Barranquilla', 'Cartagena', 'Bucaramanga'];
-const ETAPAS: { value: EtapaMacro; label: string }[] = [
-  { value: 'preaprobacion', label: 'Preaprobación' },
-  { value: 'aprobacion', label: 'Aprobación' },
-  { value: 'legalizacion', label: 'Legalización' },
-  { value: 'desembolsado', label: 'Desembolsado' },
-];
-
 const PAGE_SIZE = 50;
 
 export function Clientes() {
@@ -148,7 +142,7 @@ export function Clientes() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todas">Todas</SelectItem>
-                {ETAPAS.map((e) => (
+                {ETAPAS_MACRO.map((e) => (
                   <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
                 ))}
               </SelectContent>
@@ -290,7 +284,7 @@ export function Clientes() {
                     <TableRow
                       key={c.case_id}
                       className="cursor-pointer hover:bg-gray-50"
-                      onDoubleClick={() => setClienteSeleccionado(c.case_id!)}
+                      onClick={() => setClienteSeleccionado(c.case_id!)}
                     >
                       <TableCell className="font-medium">{c.nombre_completo}</TableCell>
                       <TableCell className="text-sm">{c.cedula}</TableCell>

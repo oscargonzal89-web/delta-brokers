@@ -19,14 +19,8 @@ import { getProjectById, getProjectKpis, getSubestadosPorProyecto } from '../../
 import { getCases } from '../../lib/api/cases';
 import { getImports } from '../../lib/api/imports';
 import { getVencimientosPorRango } from '../../lib/api/analytics';
+import { ETAPA_LABELS } from '../../lib/etapas';
 import type { Project, DashboardKpi, CaseWithDetails, SubestadoPorProyecto, VencimientoPorRango } from '../../lib/types';
-
-const etapaLabels: Record<string, string> = {
-  preaprobacion: 'Preaprobación',
-  aprobacion: 'Aprobación',
-  legalizacion: 'Legalización',
-  desembolsado: 'Desembolsado',
-};
 
 export function ProyectoDetalle() {
   const { id } = useParams();
@@ -98,10 +92,12 @@ export function ProyectoDetalle() {
   }
 
   const funnelData = [
-    { etapa: 'Preaprobación', cantidad: kpi?.preaprobacion ?? 0 },
-    { etapa: 'Aprobación', cantidad: kpi?.aprobacion ?? 0 },
-    { etapa: 'Legalización', cantidad: kpi?.legalizacion ?? 0 },
-    { etapa: 'Desembolsado', cantidad: kpi?.desembolsado ?? 0 },
+    { etapa: ETAPA_LABELS.preaprobacion, cantidad: kpi?.preaprobacion ?? 0 },
+    { etapa: ETAPA_LABELS.aprobacion, cantidad: kpi?.aprobacion ?? 0 },
+    { etapa: ETAPA_LABELS.legalizacion, cantidad: kpi?.legalizacion ?? 0 },
+    { etapa: ETAPA_LABELS.desembolsado, cantidad: kpi?.desembolsado ?? 0 },
+    { etapa: ETAPA_LABELS.estado_cliente, cantidad: kpi?.estado_cliente ?? 0 },
+    { etapa: ETAPA_LABELS.negados, cantidad: kpi?.negados ?? 0 },
   ];
 
   const vencimientoRangos = {
@@ -135,16 +131,13 @@ export function ProyectoDetalle() {
         </TabsList>
 
         <TabsContent value="seguimiento" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <KPICard title="Preaprobación" value={kpi?.preaprobacion ?? 0} icon={Users} />
             <KPICard title="Aprobación" value={kpi?.aprobacion ?? 0} icon={CheckCircle} />
             <KPICard title="Legalización" value={kpi?.legalizacion ?? 0} icon={TrendingUp} />
-            <KPICard
-              title="Desembolsados"
-              value={kpi?.desembolsado ?? 0}
-              icon={CheckCircle}
-              variant="success"
-            />
+            <KPICard title="Desembolsados" value={kpi?.desembolsado ?? 0} icon={CheckCircle} variant="success" />
+            <KPICard title="Estado Cliente" value={kpi?.estado_cliente ?? 0} icon={Users} />
+            <KPICard title="Negados" value={kpi?.negados ?? 0} icon={CheckCircle} variant="danger" />
           </div>
 
           <div className="bg-white p-6 rounded-lg border border-gray-200">
@@ -172,7 +165,7 @@ export function ProyectoDetalle() {
                     className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
                   >
                     <p className="text-xs text-gray-600 mb-1">
-                      {etapaLabels[sub.etapa_macro ?? ''] ?? sub.etapa_macro} - {sub.subestado}
+                      {ETAPA_LABELS[sub.etapa_macro as keyof typeof ETAPA_LABELS] ?? sub.etapa_macro} - {sub.subestado}
                     </p>
                     <p className="text-xl font-semibold">{sub.cantidad}</p>
                   </div>
