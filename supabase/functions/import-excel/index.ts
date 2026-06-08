@@ -2,21 +2,112 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { read, utils } from "npm:xlsx@0.18.5";
 
-const REQUIRED_COLS = ["nombre", "cedula", "banco_actual", "etapa", "subestado"];
+/**
+ * Maps normalized Excel column names to their target table and field.
+ * Normalization: lowercase + trim (accent variants included).
+ */
+interface ColMapping {
+  table: "persons" | "cases" | "projects" | "assignments";
+  field: string;
+  type?: "string" | "number" | "date";
+}
 
-const ETAPA_MAP: Record<string, string> = {
-  preaprobacion: "preaprobacion",
-  "preaprobación": "preaprobacion",
-  aprobacion: "aprobacion",
-  "aprobación": "aprobacion",
-  legalizacion: "legalizacion",
-  "legalización": "legalizacion",
-  desembolsado: "desembolsado",
-  estado_cliente: "estado_cliente",
-  "estado cliente": "estado_cliente",
-  negados: "negados",
-  negado: "negados",
+const COLUMN_MAP: Record<string, ColMapping> = {
+  // Comprador 1 → persons
+  comprador1: { table: "persons", field: "nombre_cliente" },
+  identificacion_comprador1: { table: "persons", field: "cedula" },
+  email_comprador1: { table: "persons", field: "correo" },
+  telefono_comprador1: { table: "persons", field: "celular" },
+
+  // Comprador 2 → cases
+  comprador2: { table: "cases", field: "nombre_cliente_comprador_2" },
+  identificacion_comprador2: { table: "cases", field: "cedula_comprador_2" },
+  email_comprador2: { table: "cases", field: "correo_comprador_2" },
+  telefono_comprador2: { table: "cases", field: "celular_comprador_2" },
+
+  // Inmueble → cases
+  torre: { table: "cases", field: "torre" },
+  apto: { table: "cases", field: "apto" },
+  precio: { table: "cases", field: "monto_inmueble", type: "number" },
+  "monto a financiar": { table: "cases", field: "monto_a_financiar", type: "number" },
+
+  // Scoring / financiero → persons
+  "ocupacion": { table: "persons", field: "ocupacion" },
+  "ocupaci\u00f3n": { table: "persons", field: "ocupacion" },
+  "calificacion solicitante": { table: "persons", field: "calificacion_solicitante" },
+  "calificaci\u00f3n solicitante": { table: "persons", field: "calificacion_solicitante" },
+  score: { table: "persons", field: "score", type: "number" },
+  "puntaje minimo": { table: "persons", field: "puntaje_minimo", type: "number" },
+  "puntaje m\u00ednimo": { table: "persons", field: "puntaje_minimo", type: "number" },
+  "ingreso automatico": { table: "persons", field: "ingreso_automatico", type: "number" },
+  "ingreso autom\u00e1tico": { table: "persons", field: "ingreso_automatico", type: "number" },
+  deudas: { table: "persons", field: "deudas", type: "number" },
+  "gastos basicos": { table: "persons", field: "gastos_basicos", type: "number" },
+  "gastos b\u00e1sicos": { table: "persons", field: "gastos_basicos", type: "number" },
+  "total egresos": { table: "persons", field: "total_egresos", type: "number" },
+
+  // Proyecto → projects (updates the project selected in the UI; no project creation from Excel)
+  // Banco Constructor populates both the case banco_actual and the project bank
+  "banco constructor": { table: "cases", field: "banco_actual" },
+  etapa: { table: "projects", field: "etapa_proyecto" },
+  ciudad: { table: "projects", field: "ciudad" },
+  "tipo de vivienda": { table: "projects", field: "tipo_vivienda" },
+  mes_proyectado_escritura: { table: "projects", field: "fecha_proyectada_escritura", type: "date" },
+
+  // Asignación
+  "correo analista": { table: "assignments", field: "analista_delta_id" },
 };
+
+/** Remove diacritics and normalize a string for key lookup. */
+function normalizeKey(s: string): string {
+  return s
+    .toLowerCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+/** Build a lookup map from normalized headers to their original keys. */
+function buildNormalizedRow(raw: Record<string, any>): Record<string, any> {
+  const out: Record<string, any> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    out[normalizeKey(k)] = v;
+  }
+  return out;
+}
+
+/** Convert an XLSX serial date or string to ISO date string (YYYY-MM-DD). */
+function toIsoDate(value: any): string | null {
+  if (!value) return null;
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+  if (typeof value === "number") {
+    // XLSX serial date: days since 1899-12-30
+    const date = new Date(Math.round((value - 25569) * 86400 * 1000));
+    return date.toISOString().slice(0, 10);
+  }
+  const s = String(value).trim();
+  // Accept formats like MM/YYYY, YYYY-MM, YYYY-MM-DD
+  if (/^\d{2}\/\d{4}$/.test(s)) {
+    const [m, y] = s.split("/");
+    return `${y}-${m}-01`;
+  }
+  if (/^\d{4}-\d{2}$/.test(s)) return `${s}-01`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  return null;
+}
+
+/** Cast a raw cell value to the expected type. */
+function castValue(value: any, type?: "string" | "number" | "date"): any {
+  if (value === "" || value === null || value === undefined) return null;
+  if (type === "number") {
+    const n = typeof value === "number" ? value : Number(String(value).replace(/[,$]/g, ""));
+    return isNaN(n) ? null : n;
+  }
+  if (type === "date") return toIsoDate(value);
+  return String(value).trim() || null;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -56,22 +147,13 @@ Deno.serve(async (req: Request) => {
     if (!file || !projectId) throw new Error("Missing file or project_id");
 
     const buffer = await file.arrayBuffer();
-    const workbook = read(new Uint8Array(buffer), { type: "array" });
+    const workbook = read(new Uint8Array(buffer), { type: "array", cellDates: true });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows: Record<string, any>[] = utils.sheet_to_json(sheet, {
-      defval: "",
-    });
+    const rawRows: Record<string, any>[] = utils.sheet_to_json(sheet, { defval: "" });
 
-    if (rows.length === 0) throw new Error("El archivo está vacío");
+    if (rawRows.length === 0) throw new Error("El archivo está vacío");
 
-    const normalizedRows = rows.map((row) => {
-      const nr: Record<string, any> = {};
-      for (const [k, v] of Object.entries(row)) {
-        nr[k.toLowerCase().trim()] = typeof v === "string" ? v.trim() : v;
-      }
-      return nr;
-    });
-
+    // Create import record
     const { data: importRec, error: importErr } = await supabase
       .from("imports")
       .insert({
@@ -86,8 +168,7 @@ Deno.serve(async (req: Request) => {
       .select()
       .single();
 
-    if (importErr)
-      throw new Error(`Error creating import: ${importErr.message}`);
+    if (importErr) throw new Error(`Error creating import: ${importErr.message}`);
     const importId = importRec.id;
 
     let inserted = 0;
@@ -95,62 +176,69 @@ Deno.serve(async (req: Request) => {
     let errCount = 0;
     const rowErrors: any[] = [];
 
-    for (let i = 0; i < normalizedRows.length; i++) {
-      const row = normalizedRows[i];
-      const rowNum = i + 2;
-      let hasErr = false;
+    // Update selected project fields once from first row (lazy, cached)
+    let projectUpdated = false;
+    const analystCache: Record<string, string | null> = {};
 
-      for (const col of REQUIRED_COLS) {
-        if (!row[col] && row[col] !== 0) {
-          hasErr = true;
-          rowErrors.push({
-            import_id: importId,
-            row_number: rowNum,
-            field: col,
-            message: `Campo '${col}' vacío`,
-            raw_value: String(row[col] ?? ""),
-          });
+    for (let i = 0; i < rawRows.length; i++) {
+      const rowNum = i + 2;
+      const row = buildNormalizedRow(rawRows[i]);
+
+      // Split row data by target table using the column map
+      const personData: Record<string, any> = {};
+      const caseData: Record<string, any> = {};
+      const projectData: Record<string, any> = {};
+      let analystEmail: string | null = null;
+
+      for (const [normalizedKey, mapping] of Object.entries(COLUMN_MAP)) {
+        const rawValue = row[normalizedKey];
+        if (rawValue === "" || rawValue === null || rawValue === undefined) continue;
+
+        const casted = castValue(rawValue, mapping.type);
+        if (casted === null) continue;
+
+        if (mapping.table === "persons") {
+          personData[mapping.field] = casted;
+        } else if (mapping.table === "cases") {
+          caseData[mapping.field] = casted;
+        } else if (mapping.table === "projects") {
+          projectData[mapping.field] = casted;
+        } else if (mapping.table === "assignments") {
+          analystEmail = String(casted).toLowerCase().trim();
         }
       }
 
-      const etapaRaw = String(row.etapa || "").toLowerCase().trim();
-      const etapaNorm = ETAPA_MAP[etapaRaw];
-      if (row.etapa && !etapaNorm) {
-        hasErr = true;
+      // Require at minimum cedula + nombre_cliente to create a person
+      if (!personData.cedula || !personData.nombre_cliente) {
+        errCount++;
         rowErrors.push({
           import_id: importId,
           row_number: rowNum,
-          field: "etapa",
-          message: `Etapa inválida: '${row.etapa}'`,
-          raw_value: String(row.etapa),
+          field: "IDENTIFICACION_COMPRADOR1 / COMPRADOR1",
+          message: "Cédula o nombre del comprador 1 faltante",
+          raw_value: String(personData.cedula ?? ""),
         });
-      }
-
-      if (hasErr) {
-        errCount++;
         continue;
       }
 
       try {
-        const cedula = String(row.cedula).trim();
-        const { data: person, error: pErr } = await supabase
+        // ── 1. Update project fields from Excel (once, using the UI-selected project) ──
+        const hasProjectData = Object.keys(projectData).length > 0;
+        if (hasProjectData && !projectUpdated) {
+          await supabase.from("projects").update(projectData).eq("id", projectId);
+          projectUpdated = true;
+        }
+
+        // ── 2. Upsert person ───────────────────────────────────────────────
+        const cedula = String(personData.cedula).trim();
+        const { data: person, error: personErr } = await supabase
           .from("persons")
-          .upsert(
-            {
-              cedula,
-              nombre_completo: String(
-                row.nombre || row.nombre_completo || ""
-              ),
-              ciudad: String(row.ciudad_cliente || row.ciudad || ""),
-              email: row.email ? String(row.email) : null,
-              telefono: row.telefono ? String(row.telefono) : null,
-            },
-            { onConflict: "cedula" }
-          )
+          .upsert({ ...personData, cedula }, { onConflict: "cedula" })
           .select("id")
           .single();
-        if (pErr) throw pErr;
+        if (personErr) throw personErr;
 
+        // ── 3. Upsert case ─────────────────────────────────────────────────
         const { data: existing } = await supabase
           .from("cases")
           .select("id")
@@ -158,34 +246,54 @@ Deno.serve(async (req: Request) => {
           .eq("person_id", person.id)
           .maybeSingle();
 
-        const cd: Record<string, any> = {
-          etapa_macro: etapaNorm,
-          subestado: String(row.subestado || ""),
-          banco_actual: String(row.banco_actual || ""),
-        };
-        if (row.ciudad_inmueble) cd.ciudad_inmueble = String(row.ciudad_inmueble);
-        if (row.monto_inmueble) cd.monto_inmueble = Number(row.monto_inmueble);
-        if (row.monto_a_financiar || row.monto_financiar)
-          cd.monto_a_financiar = Number(
-            row.monto_a_financiar || row.monto_financiar
-          );
-        if (row.fecha_carta_aprobacion)
-          cd.fecha_carta_aprobacion = String(row.fecha_carta_aprobacion);
-        if (row.vigencia_dias) cd.vigencia_dias = Number(row.vigencia_dias);
+        // Default banco_actual to empty string if not provided in Excel
+        const bancoActual = "";
 
         if (existing) {
           const { error: uErr } = await supabase
             .from("cases")
-            .update(cd)
+            .update(caseData)
             .eq("id", existing.id);
           if (uErr) throw uErr;
           updated++;
+
+          // ── 4. Assignment ────────────────────────────────────────────────
+          if (analystEmail) {
+            const analystId = await resolveAnalystId(supabase, analystEmail, analystCache);
+            if (analystId) {
+              await supabase
+                .from("assignments")
+                .upsert(
+                  { case_id: existing.id, analista_delta_id: analystId },
+                  { onConflict: "case_id" }
+                );
+            }
+          }
         } else {
-          const { error: iErr } = await supabase
+          const { data: newCase, error: iErr } = await supabase
             .from("cases")
-            .insert({ ...cd, project_id: projectId, person_id: person.id });
+            .insert({
+              ...caseData,
+              project_id: projectId,
+              person_id: person.id,
+              banco_actual: caseData.banco_actual ?? bancoActual,
+              etapa_macro: "estado_cliente",
+              subestado: "",
+            })
+            .select("id")
+            .single();
           if (iErr) throw iErr;
           inserted++;
+
+          // ── 4. Assignment ────────────────────────────────────────────────
+          if (analystEmail && newCase) {
+            const analystId = await resolveAnalystId(supabase, analystEmail, analystCache);
+            if (analystId) {
+              await supabase
+                .from("assignments")
+                .insert({ case_id: newCase.id, analista_delta_id: analystId });
+            }
+          }
         }
       } catch (dbErr: any) {
         errCount++;
@@ -203,8 +311,7 @@ Deno.serve(async (req: Request) => {
       await supabase.from("import_row_errors").insert(rowErrors);
     }
 
-    const finalStatus =
-      errCount > 0 ? "completed_with_errors" : "completed";
+    const finalStatus = errCount > 0 ? "completed_with_errors" : "completed";
     const { data: final, error: fErr } = await supabase
       .from("imports")
       .update({
@@ -232,3 +339,22 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+/**
+ * Resolve a user_profile ID from an email address.
+ * Results are cached to avoid redundant DB lookups.
+ */
+async function resolveAnalystId(
+  supabase: ReturnType<typeof createClient>,
+  email: string,
+  cache: Record<string, string | null>
+): Promise<string | null> {
+  if (email in cache) return cache[email];
+  const { data } = await supabase
+    .from("user_profiles")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+  cache[email] = data?.id ?? null;
+  return cache[email];
+}

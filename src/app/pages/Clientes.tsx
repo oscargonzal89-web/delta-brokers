@@ -25,12 +25,8 @@ import { getCases, getSubestados, type CaseFilters } from '../../lib/api/cases';
 import { getAnalistas } from '../../lib/api/users';
 import { ClienteDetalle } from '../components/ClienteDetalle';
 import { ETAPAS_MACRO } from '../../lib/etapas';
+import { BANCOS } from '../../lib/constants';
 import type { CaseWithDetails, EtapaMacro, CatalogoSubestado } from '../../lib/types';
-
-const BANCOS = [
-  'Bancolombia', 'Davivienda', 'Banco de Bogotá', 'BBVA Colombia',
-  'Banco Popular', 'Banco Occidente', 'Itaú',
-];
 const CIUDADES = ['Bogotá', 'Medellín', 'Cali', 'Barranquilla', 'Cartagena', 'Bucaramanga'];
 const PAGE_SIZE = 50;
 
