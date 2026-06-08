@@ -383,7 +383,9 @@ export type Database = {
           aprobacion: number | null
           ciudad: string | null
           desembolsado: number | null
+          estado_cliente: number | null
           legalizacion: number | null
+          negados: number | null
           por_vencer: number | null
           preaprobacion: number | null
           project_id: string | null
@@ -399,7 +401,9 @@ export type Database = {
           analista_nombre: string | null
           aprobacion: number | null
           desembolsado: number | null
+          estado_cliente: number | null
           legalizacion: number | null
+          negados: number | null
           por_vencer: number | null
           preaprobacion: number | null
           project_id: string | null
@@ -481,7 +485,13 @@ export type Database = {
       is_coordinator_or_admin: { Args: never; Returns: boolean }
     }
     Enums: {
-      etapa_macro: "preaprobacion" | "aprobacion" | "legalizacion" | "desembolsado"
+      etapa_macro:
+        | "preaprobacion"
+        | "aprobacion"
+        | "legalizacion"
+        | "desembolsado"
+        | "estado_cliente"
+        | "negados"
       import_status: "processing" | "completed" | "failed"
       rol_usuario: "analista" | "coordinador" | "administrador"
       tipo_documento: "carta_preaprobacion" | "carta_aprobacion"

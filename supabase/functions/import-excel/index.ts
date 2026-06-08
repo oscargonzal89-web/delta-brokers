@@ -12,6 +12,10 @@ const ETAPA_MAP: Record<string, string> = {
   legalizacion: "legalizacion",
   "legalización": "legalizacion",
   desembolsado: "desembolsado",
+  estado_cliente: "estado_cliente",
+  "estado cliente": "estado_cliente",
+  negados: "negados",
+  negado: "negados",
 };
 
 const corsHeaders = {

@@ -11,6 +11,8 @@ import {
   AlertCircle,
   Clock,
   Loader2,
+  UserX,
+  Ban,
 } from 'lucide-react';
 import {
   Select,
@@ -27,17 +29,18 @@ import {
   TableHeader,
   TableRow,
 } from '../components/ui/table';
-import { useNavigate } from 'react-router';
-import { getDashboardKpis, getTopPorVencer, getVencimientosCriticos } from '../../lib/api/analytics';
+import { useNavigate, useLocation } from 'react-router';
+import { getFilteredDashboardKpis, getTopPorVencer } from '../../lib/api/analytics';
 import { getProjects } from '../../lib/api/projects';
 import { getAnalistas } from '../../lib/api/users';
-import type { Project, CaseWithDetails, DashboardKpi } from '../../lib/types';
+import type { Project, CaseWithDetails } from '../../lib/types';
 
 const CIUDADES = ['Bogotá', 'Medellín', 'Cali', 'Barranquilla', 'Cartagena', 'Bucaramanga'];
 const BANCOS = ['Bancolombia', 'Davivienda', 'Banco de Bogotá', 'BBVA Colombia', 'Banco Popular', 'Banco Occidente', 'Itaú'];
 
 export function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [filtroProyecto, setFiltroProyecto] = useState<string>('todos');
   const [filtroCiudad, setFiltroCiudad] = useState<string>('todos');
   const [filtroBanco, setFiltroBanco] = useState<string>('todos');
@@ -45,7 +48,17 @@ export function Dashboard() {
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [analistas, setAnalistas] = useState<{ id: string; nombre: string }[]>([]);
-  const [kpis, setKpis] = useState({ total: 0, preaprobacion: 0, aprobacion: 0, legalizacion: 0, desembolsados: 0, porVencer: 0, vencidos: 0 });
+  const [kpis, setKpis] = useState({
+    total: 0,
+    preaprobacion: 0,
+    aprobacion: 0,
+    legalizacion: 0,
+    desembolsados: 0,
+    estadoCliente: 0,
+    negados: 0,
+    porVencer: 0,
+    vencidos: 0,
+  });
   const [topPorVencer, setTopPorVencer] = useState<CaseWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -58,42 +71,39 @@ export function Dashboard() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const projectId = filtroProyecto !== 'todos' ? filtroProyecto : undefined;
+      const filters = {
+        projectId: filtroProyecto !== 'todos' ? filtroProyecto : undefined,
+        ciudad: filtroCiudad !== 'todos' ? filtroCiudad : undefined,
+        banco: filtroBanco !== 'todos' ? filtroBanco : undefined,
+        analistaId: filtroAnalista !== 'todos' ? filtroAnalista : undefined,
+      };
 
-      const [kpiData, topData, criticalCount] = await Promise.all([
-        getDashboardKpis(projectId),
-        getTopPorVencer(10, projectId),
-        getVencimientosCriticos(60),
+      const [aggregated, topData] = await Promise.all([
+        getFilteredDashboardKpis(filters),
+        getTopPorVencer(10, filters),
       ]);
 
-      const aggregated = { total: 0, preaprobacion: 0, aprobacion: 0, legalizacion: 0, desembolsados: 0, porVencer: 0, vencidos: 0 };
-
-      for (const row of kpiData) {
-        const count = (row as any).total_cases ?? 0;
-        aggregated.total += count;
-        const etapa = (row as any).etapa_macro;
-        if (etapa === 'preaprobacion') aggregated.preaprobacion += count;
-        else if (etapa === 'aprobacion') aggregated.aprobacion += count;
-        else if (etapa === 'legalizacion') aggregated.legalizacion += count;
-        else if (etapa === 'desembolsado') aggregated.desembolsados += count;
-      }
-
-      aggregated.porVencer = criticalCount;
-
-      const vencidosCount = topData.filter((c) => (c.dias_restantes ?? 999) <= 0).length;
-      aggregated.vencidos = vencidosCount;
-
       setKpis(aggregated);
-      setTopPorVencer(topData.filter((c) => (c.dias_restantes ?? 999) <= 60));
+      setTopPorVencer(topData);
     } catch {
       // silently fail, data stays at defaults
     } finally {
       setLoading(false);
     }
-  }, [filtroProyecto]);
+  }, [filtroProyecto, filtroCiudad, filtroBanco, filtroAnalista]);
 
   useEffect(() => {
     fetchData();
+  }, [fetchData, location.key]);
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchData();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
   }, [fetchData]);
 
   const handleKPIClick = (etapa?: string) => {
@@ -168,12 +178,14 @@ export function Dashboard() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <KPICard title="Total Clientes" value={kpis.total} icon={Users} onClick={() => handleKPIClick()} />
             <KPICard title="Preaprobación" value={kpis.preaprobacion} icon={FileText} onClick={() => handleKPIClick('preaprobacion')} />
             <KPICard title="Aprobación" value={kpis.aprobacion} icon={CheckCircle} onClick={() => handleKPIClick('aprobacion')} />
             <KPICard title="Legalización" value={kpis.legalizacion} icon={Scale} onClick={() => handleKPIClick('legalizacion')} />
             <KPICard title="Desembolsados" value={kpis.desembolsados} icon={TrendingUp} variant="success" onClick={() => handleKPIClick('desembolsado')} />
+            <KPICard title="Estado Cliente" value={kpis.estadoCliente} icon={UserX} onClick={() => handleKPIClick('estado_cliente')} />
+            <KPICard title="Negados" value={kpis.negados} icon={Ban} variant="danger" onClick={() => handleKPIClick('negados')} />
             <KPICard title="Por Vencer (<60d)" value={kpis.porVencer} icon={Clock} variant="warning" />
             <KPICard title="Vencidos" value={kpis.vencidos} icon={AlertCircle} variant="danger" />
           </div>
