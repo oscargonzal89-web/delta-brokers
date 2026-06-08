@@ -46,12 +46,8 @@ import { useAuth } from '../../lib/auth';
 import { EventLogDetails } from './EventLogDetails';
 import { EVENT_TYPE_LABELS } from '../../lib/eventLogFormat';
 import { ETAPAS_MACRO } from '../../lib/etapas';
+import { BANCOS } from '../../lib/constants';
 import type { CaseWithDetails, EtapaMacro, CatalogoSubestado, Document as DocType } from '../../lib/types';
-
-const BANCOS = [
-  'Bancolombia', 'Davivienda', 'Banco de Bogotá', 'BBVA Colombia',
-  'Banco Popular', 'Banco Occidente', 'Itaú',
-];
 
 const UNASSIGNED_VALUE = '__unassigned__';
 
@@ -421,6 +417,7 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
                 </TabsList>
 
                 <TabsContent value="resumen" className="space-y-6">
+                  {/* Datos del cliente */}
                   <div>
                     <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold">
                       <Users className="h-4 w-4" />
@@ -436,20 +433,149 @@ export function ClienteDetalle({ clienteId, open, onClose, onUpdate }: ClienteDe
                         <p className="font-medium">{caso.cedula}</p>
                       </div>
                       <div>
-                        <p className="text-gray-600">Ciudad</p>
+                        <p className="text-gray-600">Celular</p>
+                        <p className="font-medium">{caso.celular || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Correo</p>
+                        <p className="font-medium">{caso.correo || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Ciudad cliente</p>
                         <p className="font-medium">{caso.ciudad_cliente || '-'}</p>
                       </div>
                       <div>
-                        <p className="text-gray-600">Proyecto</p>
-                        <p className="font-medium">{caso.proyecto_nombre}</p>
+                        <p className="text-gray-600">Ciudad inmueble</p>
+                        <p className="font-medium">{caso.ciudad_inmueble || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Torre</p>
+                        <p className="font-medium">{caso.torre || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Apto</p>
+                        <p className="font-medium">{caso.apto || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Ocupación</p>
+                        <p className="font-medium">{caso.ocupacion || '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Comprador 2 */}
+                  <Separator />
+                  <div>
+                    <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                      <Users className="h-4 w-4" />
+                      Comprador 2
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-600">Nombre</p>
+                        <p className="font-medium">{caso.nombre_cliente_comprador_2 || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Cédula</p>
+                        <p className="font-medium">{caso.cedula_comprador_2 || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Celular</p>
+                        <p className="font-medium">{caso.celular_comprador_2 || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Correo</p>
+                        <p className="font-medium">{caso.correo_comprador_2 || '-'}</p>
                       </div>
                     </div>
                   </div>
 
                   <Separator />
 
+                  {/* Scoring / Capacidad financiera */}
                   <div>
-                    <h4 className="mb-3 text-sm font-semibold">Información financiera</h4>
+                    <h4 className="mb-3 text-sm font-semibold">Scoring y capacidad financiera</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-600">Calificación solicitante</p>
+                        <p className="font-medium">{caso.calificacion_solicitante || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Score</p>
+                        <p className="font-medium">{caso.score != null ? caso.score : '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Puntaje mínimo</p>
+                        <p className="font-medium">{caso.puntaje_minimo != null ? caso.puntaje_minimo : '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Ingreso</p>
+                        <p className="font-medium">
+                          {caso.ingreso_automatico != null ? `$${caso.ingreso_automatico.toLocaleString('es-CO')}` : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Deudas</p>
+                        <p className="font-medium">
+                          {caso.deudas != null ? `$${caso.deudas.toLocaleString('es-CO')}` : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Gastos básicos</p>
+                        <p className="font-medium">
+                          {caso.gastos_basicos != null ? `$${caso.gastos_basicos.toLocaleString('es-CO')}` : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Total egresos</p>
+                        <p className="font-medium">
+                          {caso.total_egresos != null ? `$${caso.total_egresos.toLocaleString('es-CO')}` : '-'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Proyecto */}
+                  <div>
+                    <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                      <Building2 className="h-4 w-4" />
+                      Proyecto
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-600">Nombre</p>
+                        <p className="font-medium">{caso.proyecto_nombre}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Ciudad</p>
+                        <p className="font-medium">{caso.proyecto_ciudad || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Banco financiador</p>
+                        <p className="font-medium">{caso.banco_financiador_principal || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Tipo de vivienda</p>
+                        <p className="font-medium">{caso.tipo_vivienda || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Etapa del proyecto</p>
+                        <p className="font-medium">{caso.etapa_proyecto || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Fecha proyectada escritura</p>
+                        <p className="font-medium">{caso.fecha_proyectada_escritura || '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Información financiera del crédito */}
+                  <div>
+                    <h4 className="mb-3 text-sm font-semibold">Información del crédito</h4>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <p className="text-gray-600">Monto inmueble</p>

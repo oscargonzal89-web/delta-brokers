@@ -116,9 +116,35 @@ export function ProyectoDetalle() {
         </Button>
         <div>
           <h2 className="text-2xl font-semibold">{project.nombre}</h2>
-          <p className="text-sm text-gray-500">
-            {project.ciudad} • {project.banco_financiador_principal}
-          </p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+            <span className="text-sm text-gray-500">{project.ciudad}</span>
+            <span className="text-gray-300">•</span>
+            <span className="text-sm text-gray-500">{project.banco_financiador_principal}</span>
+            {project.tipo_vivienda && (
+              <>
+                <span className="text-gray-300">•</span>
+                <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-600/20">
+                  {project.tipo_vivienda}
+                </span>
+              </>
+            )}
+            {project.etapa_proyecto && (
+              <>
+                <span className="text-gray-300">•</span>
+                <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-600/20">
+                  {project.etapa_proyecto}
+                </span>
+              </>
+            )}
+            {project.fecha_proyectada_escritura && (
+              <>
+                <span className="text-gray-300">•</span>
+                <span className="text-sm text-gray-500">
+                  Escritura: <span className="font-medium text-gray-700">{project.fecha_proyectada_escritura}</span>
+                </span>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

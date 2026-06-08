@@ -41,8 +41,12 @@ export type Database = {
       }
       cases: {
         Row: {
+          apto: string | null
           banco_actual: string
+          cedula_comprador_2: string | null
+          celular_comprador_2: string | null
           ciudad_inmueble: string | null
+          correo_comprador_2: string | null
           created_at: string
           etapa_macro: Database["public"]["Enums"]["etapa_macro"]
           fecha_carta_aprobacion: string | null
@@ -52,15 +56,21 @@ export type Database = {
           monto_aprobado: number | null
           monto_desembolsado: number | null
           monto_inmueble: number | null
+          nombre_cliente_comprador_2: string | null
           person_id: string
           project_id: string
           subestado: string
+          torre: string | null
           updated_at: string
           vigencia_dias: number | null
         }
         Insert: {
+          apto?: string | null
           banco_actual: string
+          cedula_comprador_2?: string | null
+          celular_comprador_2?: string | null
           ciudad_inmueble?: string | null
+          correo_comprador_2?: string | null
           created_at?: string
           etapa_macro?: Database["public"]["Enums"]["etapa_macro"]
           fecha_carta_aprobacion?: string | null
@@ -70,15 +80,21 @@ export type Database = {
           monto_aprobado?: number | null
           monto_desembolsado?: number | null
           monto_inmueble?: number | null
+          nombre_cliente_comprador_2?: string | null
           person_id: string
           project_id: string
           subestado?: string
+          torre?: string | null
           updated_at?: string
           vigencia_dias?: number | null
         }
         Update: {
+          apto?: string | null
           banco_actual?: string
+          cedula_comprador_2?: string | null
+          celular_comprador_2?: string | null
           ciudad_inmueble?: string | null
+          correo_comprador_2?: string | null
           created_at?: string
           etapa_macro?: Database["public"]["Enums"]["etapa_macro"]
           fecha_carta_aprobacion?: string | null
@@ -88,9 +104,11 @@ export type Database = {
           monto_aprobado?: number | null
           monto_desembolsado?: number | null
           monto_inmueble?: number | null
+          nombre_cliente_comprador_2?: string | null
           person_id?: string
           project_id?: string
           subestado?: string
+          torre?: string | null
           updated_at?: string
           vigencia_dias?: number | null
         }
@@ -254,31 +272,58 @@ export type Database = {
       }
       persons: {
         Row: {
-          apellidos: string
+          calificacion_solicitante: string | null
           cedula: string
+          celular: string | null
           ciudad_cliente: string | null
+          correo: string | null
           created_at: string
+          deudas: number | null
           fecha_nacimiento: string | null
+          gastos_basicos: number | null
           id: string
-          nombres: string
+          ingreso_automatico: number | null
+          nombre_cliente: string | null
+          ocupacion: string | null
+          puntaje_minimo: number | null
+          score: number | null
+          total_egresos: number | null
         }
         Insert: {
-          apellidos: string
+          calificacion_solicitante?: string | null
           cedula: string
+          celular?: string | null
           ciudad_cliente?: string | null
+          correo?: string | null
           created_at?: string
+          deudas?: number | null
           fecha_nacimiento?: string | null
+          gastos_basicos?: number | null
           id?: string
-          nombres: string
+          ingreso_automatico?: number | null
+          nombre_cliente?: string | null
+          ocupacion?: string | null
+          puntaje_minimo?: number | null
+          score?: number | null
+          total_egresos?: number | null
         }
         Update: {
-          apellidos?: string
+          calificacion_solicitante?: string | null
           cedula?: string
+          celular?: string | null
           ciudad_cliente?: string | null
+          correo?: string | null
           created_at?: string
+          deudas?: number | null
           fecha_nacimiento?: string | null
+          gastos_basicos?: number | null
           id?: string
-          nombres?: string
+          ingreso_automatico?: number | null
+          nombre_cliente?: string | null
+          ocupacion?: string | null
+          puntaje_minimo?: number | null
+          score?: number | null
+          total_egresos?: number | null
         }
         Relationships: []
       }
@@ -287,24 +332,33 @@ export type Database = {
           banco_financiador_principal: string
           ciudad: string
           created_at: string
+          etapa_proyecto: string | null
+          fecha_proyectada_escritura: string | null
           id: string
           nombre: string
+          tipo_vivienda: string | null
           updated_at: string
         }
         Insert: {
           banco_financiador_principal: string
           ciudad: string
           created_at?: string
+          etapa_proyecto?: string | null
+          fecha_proyectada_escritura?: string | null
           id?: string
           nombre: string
+          tipo_vivienda?: string | null
           updated_at?: string
         }
         Update: {
           banco_financiador_principal?: string
           ciudad?: string
           created_at?: string
+          etapa_proyecto?: string | null
+          fecha_proyectada_escritura?: string | null
           id?: string
           nombre?: string
+          tipo_vivienda?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -349,31 +403,49 @@ export type Database = {
           analista_legalizacion_nombre: string | null
           analista_radicacion_id: string | null
           analista_radicacion_nombre: string | null
-          apellidos: string | null
+          apto: string | null
           banco_actual: string | null
           banco_financiador_principal: string | null
+          calificacion_solicitante: string | null
           case_created_at: string | null
           case_id: string | null
           case_updated_at: string | null
           cedula: string | null
+          cedula_comprador_2: string | null
+          celular: string | null
+          celular_comprador_2: string | null
           ciudad_cliente: string | null
           ciudad_inmueble: string | null
+          correo: string | null
+          correo_comprador_2: string | null
+          deudas: number | null
           dias_restantes: number | null
           etapa_macro: Database["public"]["Enums"]["etapa_macro"] | null
+          etapa_proyecto: string | null
           fecha_carta_aprobacion: string | null
           fecha_nacimiento: string | null
+          fecha_proyectada_escritura: string | null
           fecha_vencimiento: string | null
+          gastos_basicos: number | null
+          ingreso_automatico: number | null
           monto_a_financiar: number | null
           monto_aprobado: number | null
           monto_desembolsado: number | null
           monto_inmueble: number | null
+          nombre_cliente: string | null
+          nombre_cliente_comprador_2: string | null
           nombre_completo: string | null
-          nombres: string | null
+          ocupacion: string | null
           person_id: string | null
           project_id: string | null
           proyecto_ciudad: string | null
           proyecto_nombre: string | null
+          puntaje_minimo: number | null
+          score: number | null
           subestado: string | null
+          tipo_vivienda: string | null
+          torre: string | null
+          total_egresos: number | null
           vigencia_dias: number | null
         }
         Relationships: []
@@ -431,32 +503,50 @@ export type Database = {
           analista_legalizacion_nombre: string | null
           analista_radicacion_id: string | null
           analista_radicacion_nombre: string | null
-          apellidos: string | null
+          apto: string | null
           banco_actual: string | null
           banco_financiador_principal: string | null
+          calificacion_solicitante: string | null
           case_created_at: string | null
           case_id: string | null
           case_updated_at: string | null
           cedula: string | null
+          cedula_comprador_2: string | null
+          celular: string | null
+          celular_comprador_2: string | null
           ciudad_cliente: string | null
           ciudad_inmueble: string | null
+          correo: string | null
+          correo_comprador_2: string | null
+          deudas: number | null
           dias_restantes: number | null
           etapa_macro: Database["public"]["Enums"]["etapa_macro"] | null
+          etapa_proyecto: string | null
           fecha_carta_aprobacion: string | null
           fecha_nacimiento: string | null
+          fecha_proyectada_escritura: string | null
           fecha_vencimiento: string | null
+          gastos_basicos: number | null
+          ingreso_automatico: number | null
           monto_a_financiar: number | null
           monto_aprobado: number | null
           monto_desembolsado: number | null
           monto_inmueble: number | null
+          nombre_cliente: string | null
+          nombre_cliente_comprador_2: string | null
           nombre_completo: string | null
-          nombres: string | null
+          ocupacion: string | null
           person_id: string | null
           project_id: string | null
           proyecto_ciudad: string | null
           proyecto_nombre: string | null
+          puntaje_minimo: number | null
           rango_vencimiento: string | null
+          score: number | null
           subestado: string | null
+          tipo_vivienda: string | null
+          torre: string | null
+          total_egresos: number | null
           vigencia_dias: number | null
         }
         Relationships: []
@@ -492,7 +582,7 @@ export type Database = {
         | "desembolsado"
         | "estado_cliente"
         | "negados"
-      import_status: "processing" | "completed" | "failed"
+      import_status: "processing" | "completed" | "completed_with_errors" | "failed"
       rol_usuario: "analista" | "coordinador" | "administrador"
       tipo_documento: "carta_preaprobacion" | "carta_aprobacion"
       tipo_evento:
