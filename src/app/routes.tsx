@@ -54,7 +54,11 @@ export const router = createBrowserRouter([
       },
       {
         path: 'seguimiento-analistas',
-        element: <SeguimientoAnalistas />,
+        element: (
+          <ProtectedRoute requiredRole="coordinador">
+            <SeguimientoAnalistas />
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'usuarios',
