@@ -257,16 +257,27 @@ Deno.serve(async (req: Request) => {
           if (uErr) throw uErr;
           updated++;
 
-          // ── 4. Assignment ────────────────────────────────────────────────
+          // ── 4. Assignment (only analista_delta_id, preserve other slots) ─
           if (analystEmail) {
             const analystId = await resolveAnalystId(supabase, analystEmail, analystCache);
             if (analystId) {
-              await supabase
-                .from("assignments")
-                .upsert(
-                  { case_id: existing.id, analista_delta_id: analystId },
-                  { onConflict: "case_id" }
-                );
+              const { data: existingAssignment } = await supabase
+                .from("assignments").select("id").eq("case_id", existing.id).maybeSingle();
+              if (existingAssignment) {
+                await supabase.from("assignments")
+                  .update({ analista_delta_id: analystId })
+                  .eq("case_id", existing.id);
+              } else {
+                await supabase.from("assignments")
+                  .insert({ case_id: existing.id, analista_delta_id: analystId });
+              }
+            } else {
+              rowErrors.push({
+                import_id: importId, row_number: rowNum,
+                field: "Correo Analista",
+                message: `Analista no encontrado: ${analystEmail}`,
+                raw_value: analystEmail,
+              });
             }
           }
         } else {
@@ -276,7 +287,7 @@ Deno.serve(async (req: Request) => {
               ...caseData,
               project_id: projectId,
               person_id: person.id,
-              banco_actual: caseData.banco_actual ?? bancoActual,
+              banco_actual: caseData.banco_actual ?? "",
               etapa_macro: "estado_cliente",
               subestado: "",
             })
@@ -289,9 +300,15 @@ Deno.serve(async (req: Request) => {
           if (analystEmail && newCase) {
             const analystId = await resolveAnalystId(supabase, analystEmail, analystCache);
             if (analystId) {
-              await supabase
-                .from("assignments")
+              await supabase.from("assignments")
                 .insert({ case_id: newCase.id, analista_delta_id: analystId });
+            } else {
+              rowErrors.push({
+                import_id: importId, row_number: rowNum,
+                field: "Correo Analista",
+                message: `Analista no encontrado: ${analystEmail}`,
+                raw_value: analystEmail,
+              });
             }
           }
         }
@@ -341,7 +358,7 @@ Deno.serve(async (req: Request) => {
 });
 
 /**
- * Resolve a user_profile ID from an email address.
+ * Resolve a user_profile ID from an email address (case-insensitive).
  * Results are cached to avoid redundant DB lookups.
  */
 async function resolveAnalystId(
@@ -353,8 +370,9 @@ async function resolveAnalystId(
   const { data } = await supabase
     .from("user_profiles")
     .select("id")
-    .eq("email", email)
-    .maybeSingle();
-  cache[email] = data?.id ?? null;
+    .ilike("email", email)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  cache[email] = data?.[0]?.id ?? null;
   return cache[email];
 }

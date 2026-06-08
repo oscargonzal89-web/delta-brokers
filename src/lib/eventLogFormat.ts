@@ -1,4 +1,4 @@
-import type { TipoEvento } from './types';
+import type { TipoEvento, EtapaMacro } from './types';
 
 import { ETAPA_LABELS } from './etapas';
 
@@ -50,11 +50,14 @@ export function parseEventLogDetails(
       const fromSubestado = asString(payload.from_subestado);
       const toSubestado = asString(payload.to_subestado);
 
+      const labelOf = (etapa: string) =>
+        ETAPA_LABELS[etapa as EtapaMacro] ?? etapa;
+
       if (fromEtapa && toEtapa && fromEtapa !== toEtapa) {
         lines.push({
           label: 'Etapa',
-          from: ETAPA_LABELS[fromEtapa] ?? fromEtapa,
-          to: ETAPA_LABELS[toEtapa] ?? toEtapa,
+          from: labelOf(fromEtapa),
+          to: labelOf(toEtapa),
         });
       }
 
@@ -69,7 +72,7 @@ export function parseEventLogDetails(
       if (lines.length === 0 && toEtapa) {
         lines.push({
           label: 'Estado actual',
-          value: `${ETAPA_LABELS[toEtapa] ?? toEtapa}${toSubestado ? ` · ${toSubestado}` : ''}`,
+          value: `${labelOf(toEtapa)}${toSubestado ? ` · ${toSubestado}` : ''}`,
         });
       }
 
